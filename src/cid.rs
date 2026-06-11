@@ -9,28 +9,15 @@ fn cid_err(e: impl std::fmt::Display) -> PyErr {
     MultiformatsError::new_err(format!("invalid CID: {e}"))
 }
 
-/// Codec name <-> code mappings come from the py-multicodec package
-/// (a runtime dependency) rather than being redefined here.
-fn multicodec_table<'py>(py: Python<'py>, table: &str) -> PyResult<Bound<'py, PyAny>> {
-    let constants = py.import("multicodec.constants").map_err(|_| {
-        MultiformatsError::new_err(
-            "codec name lookups require the py-multicodec package (pip install py-multicodec)",
-        )
-    })?;
-    constants.getattr(table)
-}
-
 /// Accept a codec as either its integer code or its multicodec name.
 fn resolve_codec(codec: &Bound<'_, PyAny>) -> PyResult<u64> {
     if let Ok(code) = codec.extract::<u64>() {
         return Ok(code);
     }
     if let Ok(name) = codec.extract::<&str>() {
-        let table = multicodec_table(codec.py(), "NAME_TABLE")?;
-        return table
-            .get_item(name)
-            .map_err(|_| MultiformatsError::new_err(format!("unknown multicodec name: {name:?}")))?
-            .extract();
+        return crate::multicodec::code_for_name(name).ok_or_else(|| {
+            MultiformatsError::new_err(format!("unknown multicodec name: {name:?}"))
+        });
     }
     Err(MultiformatsError::new_err(
         "codec must be an integer code or a multicodec name",
@@ -88,15 +75,11 @@ impl PyCid {
         self.inner.codec()
     }
 
-    /// The multicodec name of the content type per py-multicodec's table
-    /// (e.g. "dag-pb"), or None if the code is not registered.
+    /// The multicodec name of the content type (e.g. "dag-pb"), or None if
+    /// the code is not in the registry.
     #[getter]
-    fn codec_name(&self, py: Python<'_>) -> PyResult<Option<String>> {
-        let table = multicodec_table(py, "CODE_TABLE")?;
-        match table.get_item(self.inner.codec()) {
-            Ok(name) => name.extract().map(Some),
-            Err(_) => Ok(None),
-        }
+    fn codec_name(&self) -> Option<&'static str> {
+        crate::multicodec::name_for_code(self.inner.codec())
     }
 
     /// The multihash of the content.

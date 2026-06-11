@@ -4,7 +4,7 @@ Wraps rust-multibase, rust-multihash, rust-multiaddr, and rust-cid in a
 single package: https://multiformats.io
 """
 
-from . import cid, multiaddr, multibase, multihash
+from . import cid, multiaddr, multibase, multicodec, multihash
 from ._multiformats import MultiformatsError
 from .cid import CID
 from .multiaddr import Multiaddr
@@ -18,5 +18,6 @@ __all__ = [
     "cid",
     "multiaddr",
     "multibase",
+    "multicodec",
     "multihash",
 ]

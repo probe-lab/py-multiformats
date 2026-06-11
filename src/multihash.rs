@@ -1,9 +1,9 @@
 use multihash_codetable::{Code, MultihashDigest};
 use multihash_derive::Hasher;
-use phf::phf_map;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
+use crate::multicodec;
 use crate::MultiformatsError;
 
 type Multihash64 = ::multihash::Multihash<64>;
@@ -12,27 +12,16 @@ type Multihash64 = ::multihash::Multihash<64>;
 // has no hasher, sha1 was dropped as insecure), and rust-multihash exposes
 // no constants for their multicodec codes, so these two are defined here.
 // Every other code comes from the `Code` variants via the generated
-// `From<Code> for u64` / `TryFrom<u64> for Code` impls.
+// `From<Code> for u64` / `TryFrom<u64> for Code` impls; all names come from
+// the multicodec registry.
 const IDENTITY_CODE: u64 = 0x00;
-const IDENTITY_NAME: &str = "identity";
 const SHA1_CODE: u64 = 0x11;
-const SHA1_NAME: &str = "sha1";
 
-/// Multicodec names for the codetable algorithms. One listing expands into
-/// the name -> `Code` perfect hash map, the exhaustive `Code` -> name match
-/// (which breaks the build if the codetable gains a variant), and the
-/// per-algorithm Python digest functions.
+/// The supported codetable algorithms. One listing expands into the list of
+/// supported `Code`s and the per-algorithm Python digest functions.
 macro_rules! define_table_algorithms {
-    ($($pyname:ident => $name:literal : $variant:ident,)*) => {
-        static TABLE_ALGORITHMS: phf::Map<&'static str, Code> = phf_map! {
-            $($name => Code::$variant,)*
-        };
-
-        fn table_name(code: Code) -> &'static str {
-            match code {
-                $(Code::$variant => $name,)*
-            }
-        }
+    ($($pyname:ident => $variant:ident,)*) => {
+        static SUPPORTED: &[Code] = &[$(Code::$variant,)*];
 
         fn register_table_digest_fns(m: &Bound<'_, PyModule>) -> PyResult<()> {
             $(
@@ -48,32 +37,32 @@ macro_rules! define_table_algorithms {
 }
 
 define_table_algorithms! {
-    sha2_256 => "sha2-256" : Sha2_256,
-    sha2_512 => "sha2-512" : Sha2_512,
-    sha3_224 => "sha3-224" : Sha3_224,
-    sha3_256 => "sha3-256" : Sha3_256,
-    sha3_384 => "sha3-384" : Sha3_384,
-    sha3_512 => "sha3-512" : Sha3_512,
-    keccak_224 => "keccak-224" : Keccak224,
-    keccak_256 => "keccak-256" : Keccak256,
-    keccak_384 => "keccak-384" : Keccak384,
-    keccak_512 => "keccak-512" : Keccak512,
-    blake3 => "blake3" : Blake3_256,
-    blake2b_256 => "blake2b-256" : Blake2b256,
-    blake2b_512 => "blake2b-512" : Blake2b512,
-    blake2s_128 => "blake2s-128" : Blake2s128,
-    blake2s_256 => "blake2s-256" : Blake2s256,
-    ripemd_160 => "ripemd-160" : Ripemd160,
-    ripemd_256 => "ripemd-256" : Ripemd256,
-    ripemd_320 => "ripemd-320" : Ripemd320,
+    sha2_256 => Sha2_256,
+    sha2_512 => Sha2_512,
+    sha3_224 => Sha3_224,
+    sha3_256 => Sha3_256,
+    sha3_384 => Sha3_384,
+    sha3_512 => Sha3_512,
+    keccak_224 => Keccak224,
+    keccak_256 => Keccak256,
+    keccak_384 => Keccak384,
+    keccak_512 => Keccak512,
+    blake3 => Blake3_256,
+    blake2b_256 => Blake2b256,
+    blake2b_512 => Blake2b512,
+    blake2s_128 => Blake2s128,
+    blake2s_256 => Blake2s256,
+    ripemd_160 => Ripemd160,
+    ripemd_256 => Ripemd256,
+    ripemd_320 => Ripemd320,
 }
 
+/// The registry name of a hash code; None for codes that are not registered
+/// as multihashes (the registry also holds codecs from other namespaces).
 pub fn code_name(code: u64) -> Option<&'static str> {
-    match code {
-        IDENTITY_CODE => Some(IDENTITY_NAME),
-        SHA1_CODE => Some(SHA1_NAME),
-        _ => Code::try_from(code).ok().map(table_name),
-    }
+    multicodec::entry_for_code(code)
+        .filter(|entry| entry.tag == "multihash")
+        .map(|entry| entry.name)
 }
 
 fn wrap(code: u64, digest: &[u8]) -> PyResult<Multihash64> {
@@ -98,14 +87,9 @@ fn digest_by_code(code: u64, data: &[u8]) -> PyResult<Multihash64> {
 }
 
 fn digest_by_name(name: &str, data: &[u8]) -> PyResult<Multihash64> {
-    match name {
-        IDENTITY_NAME => wrap(IDENTITY_CODE, data),
-        SHA1_NAME => sha1_digest(data),
-        _ => TABLE_ALGORITHMS
-            .get(name)
-            .map(|c| c.digest(data))
-            .ok_or_else(|| MultiformatsError::new_err(format!("unknown hash algorithm: {name:?}"))),
-    }
+    let code = multicodec::code_for_name(name)
+        .ok_or_else(|| MultiformatsError::new_err(format!("unknown hash algorithm: {name:?}")))?;
+    digest_by_code(code, data)
 }
 
 /// A multihash: a self-describing hash (algorithm code, digest size, digest).
@@ -205,16 +189,14 @@ fn digest(algorithm: Algorithm<'_>, data: &[u8]) -> PyResult<PyMultihash> {
 /// sorted by code.
 #[pyfunction]
 fn codes(py: Python<'_>) -> PyResult<Bound<'_, PyDict>> {
-    let mut entries: Vec<(&'static str, u64)> = TABLE_ALGORITHMS
-        .entries()
-        .map(|(name, code)| (*name, u64::from(*code)))
-        .collect();
-    entries.push((IDENTITY_NAME, IDENTITY_CODE));
-    entries.push((SHA1_NAME, SHA1_CODE));
-    entries.sort_unstable_by_key(|(_, code)| *code);
+    let mut codes: Vec<u64> = SUPPORTED.iter().map(|&c| c.into()).collect();
+    codes.push(IDENTITY_CODE);
+    codes.push(SHA1_CODE);
+    codes.sort_unstable();
 
     let dict = PyDict::new(py);
-    for (name, code) in entries {
+    for code in codes {
+        let name = code_name(code).expect("supported algorithms are in the registry");
         dict.set_item(name, code)?;
     }
     Ok(dict)

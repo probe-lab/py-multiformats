@@ -5,6 +5,7 @@ use pyo3::prelude::*;
 mod cid;
 mod multiaddr;
 mod multibase;
+mod multicodec;
 mod multihash;
 
 create_exception!(
@@ -21,6 +22,10 @@ fn _multiformats(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     let multibase_mod = PyModule::new(py, "multibase")?;
     multibase::register(&multibase_mod)?;
     m.add_submodule(&multibase_mod)?;
+
+    let multicodec_mod = PyModule::new(py, "multicodec")?;
+    multicodec::register(&multicodec_mod)?;
+    m.add_submodule(&multicodec_mod)?;
 
     let multihash_mod = PyModule::new(py, "multihash")?;
     multihash::register(&multihash_mod)?;

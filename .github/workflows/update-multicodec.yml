@@ -1,0 +1,27 @@
+name: Update multicodec table
+
+on:
+  schedule:
+    - cron: "17 6 * * 1" # weekly, Monday morning
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/update-multicodec-table.sh
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          branch: update-multicodec-table
+          title: "chore: update multicodec table from upstream registry"
+          commit-message: "chore: update multicodec table from upstream registry"
+          body: |
+            Automated refresh of `data/multicodec-table.csv` from
+            https://github.com/multiformats/multicodec. The Rust table is
+            regenerated at build time; CI validates the result.
+          delete-branch: true

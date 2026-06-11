@@ -115,11 +115,12 @@ def test_codes_table():
     assert len(codes) == 20
 
 
-def test_codes_agree_with_py_multicodec_table():
-    from multicodec.constants import NAME_TABLE
+def test_codes_agree_with_multicodec_registry():
+    from multiformats import multicodec
 
     for name, code in multihash.codes().items():
-        assert NAME_TABLE[name] == code, name
+        assert multicodec.code(name) == code, name
+        assert multicodec.tag(code) == "multihash", name
 
 
 def test_equality_and_hashing():

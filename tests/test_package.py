@@ -11,6 +11,7 @@ def test_top_level_exports():
         "cid",
         "multiaddr",
         "multibase",
+        "multicodec",
         "multihash",
     }
 

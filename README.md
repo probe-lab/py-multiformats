@@ -8,6 +8,10 @@ wrapped with [PyO3](https://pyo3.rs):
 - [rust-multiaddr](https://github.com/multiformats/rust-multiaddr) — self-describing network addresses
 - [rust-cid](https://github.com/multiformats/rust-cid) — self-describing content identifiers
 
+It also embeds the canonical [multicodec](https://github.com/multiformats/multicodec)
+registry, generated at build time from the vendored `data/multicodec-table.csv`
+(refreshed weekly from upstream by a scheduled workflow).
+
 ## Install
 
 ```bash
@@ -17,7 +21,14 @@ pip install py-multiformats
 ## Usage
 
 ```python
-from multiformats import CID, Multiaddr, Multihash, multibase, multihash
+from multiformats import CID, Multiaddr, Multihash, multibase, multicodec, multihash
+
+# multicodec — the codec registry
+multicodec.code("dag-pb")                            # 112 (0x70)
+multicodec.name(0x70)                                # "dag-pb"
+multicodec.tag("dag-pb")                             # "ipld" (accepts name or code)
+multicodec.DAG_PB                                    # 112 — every entry as a constant
+multicodec.entries()                                 # [(name, tag, code, status), ...]
 
 # multibase
 encoded = multibase.encode("base58btc", b"hello")    # "zCn8eVZg"
@@ -39,7 +50,7 @@ multihash.codes()                                    # name -> code table
 cid = CID.decode("QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n")
 cid.version                                          # 0
 cid.codec                                            # 112 (0x70)
-cid.codec_name                                       # "dag-pb" (via py-multicodec)
+cid.codec_name                                       # "dag-pb"
 cid.hash.name                                        # "sha2-256"
 CID(1, "raw", cid.hash)                              # codec by multicodec name or code
 str(cid.to_v1())                                     # "bafybeihdwdce..."
