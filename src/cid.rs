@@ -15,9 +15,7 @@ fn resolve_codec(codec: &Bound<'_, PyAny>) -> PyResult<u64> {
         return Ok(code);
     }
     if let Ok(name) = codec.extract::<&str>() {
-        return crate::multicodec::code_for_name(name).ok_or_else(|| {
-            MultiformatsError::new_err(format!("unknown multicodec name: {name:?}"))
-        });
+        return Ok(crate::multicodec::named_entry(name)?.code);
     }
     Err(MultiformatsError::new_err(
         "codec must be an integer code or a multicodec name",

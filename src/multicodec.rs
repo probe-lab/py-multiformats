@@ -31,38 +31,38 @@ pub fn name_for_code(code: u64) -> Option<&'static str> {
     entry_for_code(code).map(|entry| entry.name)
 }
 
-fn unknown_name_err(name: &str) -> PyErr {
-    MultiformatsError::new_err(format!("unknown multicodec name: {name:?}"))
+/// Registry entry for `name`, or a Python error.
+pub fn named_entry(name: &str) -> PyResult<&'static Entry> {
+    entry_for_name(name)
+        .ok_or_else(|| MultiformatsError::new_err(format!("unknown multicodec name: {name:?}")))
 }
 
-fn unknown_code_err(code: u64) -> PyErr {
-    MultiformatsError::new_err(format!("unknown multicodec code: {code:#x}"))
+/// Registry entry for `code`, or a Python error.
+pub fn coded_entry(code: u64) -> PyResult<&'static Entry> {
+    entry_for_code(code)
+        .ok_or_else(|| MultiformatsError::new_err(format!("unknown multicodec code: {code:#x}")))
 }
 
 /// The code registered for a multicodec name.
 #[pyfunction]
 fn code(name: &str) -> PyResult<u64> {
-    code_for_name(name).ok_or_else(|| unknown_name_err(name))
+    Ok(named_entry(name)?.code)
 }
 
 /// The name registered for a multicodec code.
 #[pyfunction]
 fn name(code: u64) -> PyResult<&'static str> {
-    name_for_code(code).ok_or_else(|| unknown_code_err(code))
+    Ok(coded_entry(code)?.name)
 }
 
 /// The registry tag (e.g. "ipld", "multihash") of a name or code.
 #[pyfunction]
 fn tag(codec: &Bound<'_, PyAny>) -> PyResult<&'static str> {
     if let Ok(code) = codec.extract::<u64>() {
-        return entry_for_code(code)
-            .map(|entry| entry.tag)
-            .ok_or_else(|| unknown_code_err(code));
+        return Ok(coded_entry(code)?.tag);
     }
     if let Ok(name) = codec.extract::<&str>() {
-        return entry_for_name(name)
-            .map(|entry| entry.tag)
-            .ok_or_else(|| unknown_name_err(name));
+        return Ok(named_entry(name)?.tag);
     }
     Err(MultiformatsError::new_err(
         "codec must be an integer code or a multicodec name",
