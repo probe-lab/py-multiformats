@@ -11,6 +11,8 @@ pub struct Entry {
     pub tag: &'static str,
     pub code: u64,
     pub status: &'static str,
+    /// The UPPER_SNAKE_CASE constant name, e.g. "DAG_PB".
+    pub constant: &'static str,
 }
 
 include!(concat!(env!("OUT_DIR"), "/multicodec_gen.rs"));
@@ -87,8 +89,7 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Every registry entry as an UPPER_SNAKE_CASE integer constant,
     // e.g. DAG_PB = 0x70.
     for entry in ENTRIES {
-        let constant = entry.name.replace('-', "_").to_uppercase();
-        m.add(constant.as_str(), entry.code)?;
+        m.add(entry.constant, entry.code)?;
     }
     Ok(())
 }

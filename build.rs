@@ -39,6 +39,11 @@ fn parse_table(csv: &str) -> Vec<Row> {
         .collect()
 }
 
+/// "dag-pb" -> "DAG_PB"; used for both the Rust and the Python constants.
+fn constant_name(name: &str) -> String {
+    name.replace('-', "_").to_uppercase()
+}
+
 fn main() {
     println!("cargo:rerun-if-changed={TABLE_CSV}");
 
@@ -55,13 +60,27 @@ fn main() {
             code,
             status,
         } = row;
+        let constant = constant_name(name);
         writeln!(
             out,
-            "    Entry {{ name: {name:?}, tag: {tag:?}, code: {code:#x}, status: {status:?} }},"
+            "    Entry {{ name: {name:?}, tag: {tag:?}, code: {code:#x}, status: {status:?}, constant: {constant:?} }},"
         )
         .unwrap();
     }
     out.push_str("];\n\n");
+
+    out.push_str("/// Every registry code as a constant, e.g. `consts::DAG_PB`.\n");
+    out.push_str("#[allow(dead_code)]\npub mod consts {\n");
+    for row in &rows {
+        writeln!(
+            out,
+            "    pub const {}: u64 = {:#x};",
+            constant_name(&row.name),
+            row.code
+        )
+        .unwrap();
+    }
+    out.push_str("}\n\n");
 
     let mut name_to_index = phf_codegen::Map::new();
     let mut code_to_index = phf_codegen::Map::new();

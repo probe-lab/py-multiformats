@@ -8,30 +8,41 @@ DATA = b"hello world"
 
 # Algorithms that exist in hashlib, for cross-checking digests.
 HASHLIB_EQUIVALENTS = [
-    (multihash.sha1, 0x11, lambda d: hashlib.sha1(d)),
-    (multihash.sha2_256, 0x12, lambda d: hashlib.sha256(d)),
-    (multihash.sha2_512, 0x13, lambda d: hashlib.sha512(d)),
-    (multihash.sha3_224, 0x17, lambda d: hashlib.sha3_224(d)),
-    (multihash.sha3_256, 0x16, lambda d: hashlib.sha3_256(d)),
-    (multihash.sha3_384, 0x15, lambda d: hashlib.sha3_384(d)),
-    (multihash.sha3_512, 0x14, lambda d: hashlib.sha3_512(d)),
-    (multihash.blake2b_256, 0xB220, lambda d: hashlib.blake2b(d, digest_size=32)),
-    (multihash.blake2b_512, 0xB240, lambda d: hashlib.blake2b(d, digest_size=64)),
-    (multihash.blake2s_128, 0xB250, lambda d: hashlib.blake2s(d, digest_size=16)),
-    (multihash.blake2s_256, 0xB260, lambda d: hashlib.blake2s(d, digest_size=32)),
+    ("sha1", 0x11, lambda d: hashlib.sha1(d)),
+    ("sha2-256", 0x12, lambda d: hashlib.sha256(d)),
+    ("sha2-512", 0x13, lambda d: hashlib.sha512(d)),
+    ("sha3-224", 0x17, lambda d: hashlib.sha3_224(d)),
+    ("sha3-256", 0x16, lambda d: hashlib.sha3_256(d)),
+    ("sha3-384", 0x15, lambda d: hashlib.sha3_384(d)),
+    ("sha3-512", 0x14, lambda d: hashlib.sha3_512(d)),
+    ("blake2b-256", 0xB220, lambda d: hashlib.blake2b(d, digest_size=32)),
+    ("blake2b-512", 0xB240, lambda d: hashlib.blake2b(d, digest_size=64)),
+    ("blake2s-128", 0xB250, lambda d: hashlib.blake2s(d, digest_size=16)),
+    ("blake2s-256", 0xB260, lambda d: hashlib.blake2s(d, digest_size=32)),
 ]
 
 
 @pytest.mark.parametrize(
-    ("fn", "code", "reference"),
+    ("name", "code", "reference"),
     HASHLIB_EQUIVALENTS,
-    ids=[f.__name__ for f, _, _ in HASHLIB_EQUIVALENTS],
+    ids=[name for name, _, _ in HASHLIB_EQUIVALENTS],
 )
-def test_digest_matches_hashlib(fn, code, reference):
-    mh = fn(DATA)
+def test_digest_matches_hashlib(name, code, reference):
+    mh = multihash.digest(name, DATA)
     assert mh.code == code
     assert mh.digest == reference(DATA).digest()
     assert mh.size == len(mh.digest)
+
+
+def test_convenience_functions_match_digest():
+    """Every supported algorithm except identity and sha1 has a module-level
+    function named after it (e.g. sha2-256 -> multihash.sha2_256)."""
+    for name in multihash.codes():
+        fn = getattr(multihash, name.replace("-", "_"), None)
+        if name in ("identity", "sha1"):
+            assert fn is None  # deliberately not exposed as functions
+        else:
+            assert fn(DATA) == multihash.digest(name, DATA)
 
 
 def test_keccak_256_known_vector():
@@ -56,7 +67,7 @@ def test_ripemd_160_known_vector():
 
 
 def test_identity_keeps_data():
-    mh = multihash.identity(DATA)
+    mh = multihash.digest("identity", DATA)
     assert mh.code == 0x00
     assert mh.digest == DATA
     assert mh.size == len(DATA)

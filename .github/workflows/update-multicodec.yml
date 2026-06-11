@@ -13,9 +13,14 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: ./scripts/update-multicodec-table.sh
-      - uses: peter-evans/create-pull-request@v7
+      - name: Checking out the repository
+        uses: actions/checkout@v4
+
+      - name: Fetching the latest table from the multicodec registry
+        run: ./scripts/update-multicodec-table.sh
+
+      - name: Opening a pull request if the table changed
+        uses: peter-evans/create-pull-request@v7
         with:
           branch: update-multicodec-table
           title: "chore: update multicodec table from upstream registry"

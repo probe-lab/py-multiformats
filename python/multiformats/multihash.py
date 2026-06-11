@@ -6,8 +6,6 @@ Multihash = _multihash.Multihash
 digest = _multihash.digest
 codes = _multihash.codes
 
-identity = _multihash.identity
-sha1 = _multihash.sha1
 sha2_256 = _multihash.sha2_256
 sha2_512 = _multihash.sha2_512
 sha3_224 = _multihash.sha3_224
@@ -36,7 +34,6 @@ __all__ = [
     "blake3",
     "codes",
     "digest",
-    "identity",
     "keccak_224",
     "keccak_256",
     "keccak_384",
@@ -44,7 +41,6 @@ __all__ = [
     "ripemd_160",
     "ripemd_256",
     "ripemd_320",
-    "sha1",
     "sha2_256",
     "sha2_512",
     "sha3_224",

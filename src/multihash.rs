@@ -3,7 +3,7 @@ use multihash_derive::Hasher;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
-use crate::multicodec;
+use crate::multicodec::{self, consts};
 use crate::MultiformatsError;
 
 type Multihash64 = ::multihash::Multihash<64>;
@@ -24,6 +24,9 @@ macro_rules! define_digest_fns {
             )*
             Ok(())
         }
+
+        #[cfg(test)]
+        static TABLE_VARIANTS: &[Code] = &[$(Code::$variant,)*];
     };
 }
 
@@ -51,9 +54,10 @@ define_digest_fns! {
 /// The registry name of a hash code; None for codes that are not registered
 /// as multihashes (the registry also holds codecs from other namespaces).
 pub fn code_name(code: u64) -> Option<&'static str> {
-    multicodec::entry_for_code(code)
-        .filter(|entry| entry.tag == "multihash")
-        .map(|entry| entry.name)
+    match multicodec::entry_for_code(code) {
+        Some(entry) if entry.tag == "multihash" => Some(entry.name),
+        _ => None,
+    }
 }
 
 fn wrap(code: u64, digest: &[u8]) -> PyResult<Multihash64> {
@@ -65,12 +69,11 @@ fn digest_by_code(code: u64, data: &[u8]) -> PyResult<Multihash64> {
     if let Ok(table_code) = Code::try_from(code) {
         return Ok(table_code.digest(data));
     }
-    // Identity and sha1 are not part of the codetable's `Code` enum (identity
-    // has no hasher, sha1 was dropped as insecure); dispatch them by their
-    // registry names.
-    match code_name(code) {
-        Some("identity") => wrap(code, data),
-        Some("sha1") => {
+    // multihash-codetable provides no hasher for these two (identity is not
+    // a hash, sha1 was dropped as insecure), so they are dispatched manually.
+    match code {
+        consts::IDENTITY => wrap(code, data),
+        consts::SHA1 => {
             let mut hasher = multihash_codetable::Sha1::default();
             hasher.update(data);
             wrap(code, hasher.finalize())
@@ -84,7 +87,7 @@ fn digest_by_code(code: u64, data: &[u8]) -> PyResult<Multihash64> {
 /// Whether `code` can be digested: in the codetable, or one of the two
 /// manually dispatched algorithms.
 fn is_supported_code(code: u64) -> bool {
-    Code::try_from(code).is_ok() || matches!(code_name(code), Some("identity" | "sha1"))
+    Code::try_from(code).is_ok() || matches!(code, consts::IDENTITY | consts::SHA1)
 }
 
 fn digest_by_name(name: &str, data: &[u8]) -> PyResult<Multihash64> {
@@ -203,25 +206,28 @@ fn codes(py: Python<'_>) -> PyResult<Bound<'_, PyDict>> {
     Ok(dict)
 }
 
-#[pyfunction]
-fn identity(data: &[u8]) -> PyResult<PyMultihash> {
-    Ok(PyMultihash {
-        inner: digest_by_name("identity", data)?,
-    })
-}
-
-#[pyfunction]
-fn sha1(data: &[u8]) -> PyResult<PyMultihash> {
-    Ok(PyMultihash {
-        inner: digest_by_name("sha1", data)?,
-    })
-}
-
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyMultihash>()?;
     m.add_function(wrap_pyfunction!(digest, m)?)?;
     m.add_function(wrap_pyfunction!(codes, m)?)?;
-    m.add_function(wrap_pyfunction!(identity, m)?)?;
-    m.add_function(wrap_pyfunction!(sha1, m)?)?;
     register_table_digest_fns(m)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every code value that can escape to Python through a digest function
+    /// comes from the `Code` enum; verify each one is a registered multihash
+    /// in the multicodec registry so the two sources cannot drift apart.
+    #[test]
+    fn every_codetable_code_is_a_registered_multihash() {
+        for &variant in TABLE_VARIANTS {
+            let code = u64::from(variant);
+            assert!(
+                code_name(code).is_some(),
+                "codetable code {code:#x} is not a registered multihash"
+            );
+        }
+    }
 }

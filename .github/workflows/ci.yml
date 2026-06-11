@@ -9,16 +9,33 @@ permissions:
   contents: read
 
 jobs:
-  rust-lint:
+  rust:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Checking out the repository
+        uses: actions/checkout@v4
+
+      - name: Setting up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Installing the Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo fmt --check
-      - run: cargo clippy --all-targets -- -D warnings
+
+      - name: Caching Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Checking formatting
+        run: cargo fmt --check
+
+      - name: Linting with clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Running Rust tests
+        run: cargo test
 
   test:
     strategy:
@@ -28,15 +45,32 @@ jobs:
         python-version: ["3.10", "3.14"]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checking out the repository
+        uses: actions/checkout@v4
+
+      - name: Setting up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - run: pip install maturin pytest mypy
-      - run: maturin build --release --out dist
-      - run: pip install dist/*.whl
+
+      - name: Installing the Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Caching Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Installing build and test tools
+        run: pip install maturin pytest mypy
+
+      - name: Building the wheel
+        run: maturin build --release --out dist
+
+      - name: Installing the wheel
+        run: pip install dist/*.whl
         shell: bash
-      - run: pytest -v
-      - run: mypy tests/
+
+      - name: Running the Python test suite
+        run: pytest -v
+
+      - name: Type-checking the test suite
+        run: mypy tests/
