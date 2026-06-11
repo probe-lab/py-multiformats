@@ -72,11 +72,45 @@ All parse/decode failures raise `multiformats.MultiformatsError`, a subclass of 
 
 ## Development
 
+Requires a Rust toolchain and [uv](https://docs.astral.sh/uv/):
+
 ```bash
-python -m venv venv && venv/bin/pip install maturin pytest mypy
-venv/bin/maturin develop        # build the Rust extension into the venv
-venv/bin/pytest                 # run the test suite
+uv venv                                       # create the virtual environment
+uv pip install maturin pytest mypy            # install the dev tools
+uv run maturin develop                        # build the Rust extension into the venv
+uv run pytest                                 # run the test suite
+uv run mypy tests/                            # type-check against the stubs
+cargo clippy --all-targets -- -D warnings     # lint the Rust side
+cargo test                                    # run the Rust unit tests
 ```
+
+### Code generation
+
+The multicodec and multibase registries are not hand-written. Their canonical
+tables are vendored in `data/` and compiled into the extension at build time:
+
+- `data/multicodec-table.csv` — verbatim copy of
+  [multiformats/multicodec `table.csv`](https://github.com/multiformats/multicodec/blob/master/table.csv)
+- `data/multibase-table.csv` — verbatim copy of
+  [multiformats/multibase `multibase.csv`](https://github.com/multiformats/multibase/blob/master/multibase.csv)
+
+`build.rs` parses both CSVs and writes `multicodec_gen.rs` and
+`multibase_gen.rs` into cargo's `OUT_DIR` (they are generated artifacts, not
+checked in). Each contains the registry rows as a static `ENTRIES` table,
+compile-time perfect hash maps for the lookups ([phf](https://docs.rs/phf)),
+and a `consts` module with one constant per entry. The same entries are
+registered as the Python constants (`multicodec.DAG_PB`,
+`multibase.BASE58BTC`, ...) at import time.
+
+To refresh the tables from upstream, run:
+
+```bash
+./scripts/update-tables.sh
+```
+
+A scheduled workflow ([update-tables.yml](.github/workflows/update-tables.yml))
+runs the same script weekly and opens a pull request when a registry changed;
+the regular CI validates the regenerated code.
 
 ## License
 
