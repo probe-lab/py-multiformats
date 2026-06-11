@@ -45,7 +45,6 @@ def test_decodes_spec_vector(base, encoded):
 def test_constants_hold_canonical_names():
     assert multibase.BASE58BTC == "base58btc"
     assert multibase.BASE32 == "base32"
-    assert multibase.IDENTITY == "identity"
     assert {getattr(multibase, name.upper()) for name in multibase.bases()} == set(
         multibase.bases()
     )
@@ -60,9 +59,27 @@ def test_unknown_constant_raises():
         multibase.BASE59
 
 
-def test_round_trips_identity():
-    encoded = multibase.encode("identity", SPEC_INPUT)
-    assert multibase.decode(encoded) == ("identity", SPEC_INPUT)
+def test_registry_entries():
+    entries = multibase.entries()
+    assert ("base58btc", "z", "final") in entries
+    assert ("base256emoji", "\U0001F680", "experimental") in entries
+    # registered encodings the underlying implementation cannot encode
+    assert any(name == "proquint" for name, _, _ in entries)
+    assert "proquint" not in multibase.bases()
+
+
+def test_registered_but_unsupported_encoding_raises():
+    assert multibase.PROQUINT == "proquint"
+    with pytest.raises(MultiformatsError, match="not supported"):
+        multibase.encode(multibase.PROQUINT, SPEC_INPUT)
+
+
+def test_identity_prefix_is_reserved():
+    # U+0000 is a reserved prefix in the multibase registry, not an encoding
+    with pytest.raises(MultiformatsError, match="unknown multibase encoding"):
+        multibase.encode("identity", SPEC_INPUT)
+    with pytest.raises(MultiformatsError, match="reserved"):
+        multibase.decode("\x00yes mani !")
 
 
 def test_encodes_base256emoji_spec_vector():
@@ -81,9 +98,10 @@ def test_decodes_base256emoji_spec_vector():
 def test_bases_lists_all_supported_encodings():
     names = multibase.bases()
     assert set(SPEC_VECTORS) < set(names)
-    assert "identity" in names
     assert "base256emoji" in names
-    assert len(names) == 24
+    # all registry encodings rust-multibase implements; "identity" (U+0000)
+    # is a reserved prefix in the registry, base45/proquint are unsupported
+    assert len(names) == 23
 
 
 def test_encode_rejects_unknown_base():

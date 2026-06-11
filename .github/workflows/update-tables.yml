@@ -1,0 +1,33 @@
+name: Update multiformats tables
+
+on:
+  schedule:
+    - cron: "17 6 * * 1" # weekly, Monday morning
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checking out the repository
+        uses: actions/checkout@v4
+
+      - name: Fetching the latest tables from the multiformats registries
+        run: ./scripts/update-tables.sh
+
+      - name: Opening a pull request if a table changed
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: update-multiformats-tables
+          title: "chore: update multiformats tables from upstream registries"
+          commit-message: "chore: update multiformats tables from upstream registries"
+          body: |
+            Automated refresh of `data/multicodec-table.csv` and
+            `data/multibase-table.csv` from their canonical repositories
+            (multiformats/multicodec and multiformats/multibase). The Rust
+            tables are regenerated at build time; CI validates the result.
+          delete-branch: true

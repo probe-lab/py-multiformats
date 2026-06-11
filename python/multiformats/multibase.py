@@ -10,6 +10,7 @@ from ._multiformats import multibase as _multibase
 encode = _multibase.encode
 decode = _multibase.decode
 bases = _multibase.bases
+entries = _multibase.entries
 
 
 def __getattr__(constant: str) -> str:
@@ -20,4 +21,4 @@ def __getattr__(constant: str) -> str:
         raise AttributeError(f"module {__name__!r} has no attribute {constant!r}") from None
 
 
-__all__ = ["bases", "decode", "encode"]
+__all__ = ["bases", "decode", "encode", "entries"]

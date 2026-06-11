@@ -9,8 +9,9 @@ wrapped with [PyO3](https://pyo3.rs):
 - [rust-cid](https://github.com/multiformats/rust-cid) — self-describing content identifiers
 
 It also embeds the canonical [multicodec](https://github.com/multiformats/multicodec)
-registry, generated at build time from the vendored `data/multicodec-table.csv`
-(refreshed weekly from upstream by a scheduled workflow).
+and [multibase](https://github.com/multiformats/multibase) registries, generated
+at build time from the vendored tables in `data/` (refreshed weekly from
+upstream by a scheduled workflow).
 
 ## Install
 

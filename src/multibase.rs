@@ -1,60 +1,45 @@
+//! The multibase registry, generated at build time from the vendored
+//! canonical table (data/multibase-table.csv). See build.rs.
+
 use multibase::Base;
-use phf::phf_map;
 use pyo3::prelude::*;
 
 use crate::MultiformatsError;
 
-/// Canonical multibase spec names for the Rust `Base` enum, defined here
-/// because the crate itself only knows the one-character codes. One listing
-/// expands into both lookup directions at compile time: a perfect hash map
-/// for name -> Base and an exhaustive match (a jump table) for Base -> name.
-/// The match also breaks the build if the crate ever adds a variant.
-macro_rules! define_bases {
-    ($($name:literal => $variant:ident,)*) => {
-        static BASES: phf::Map<&'static str, Base> = phf_map! {
-            $($name => Base::$variant,)*
-        };
-
-        pub fn base_name(base: Base) -> &'static str {
-            match base {
-                $(Base::$variant => $name,)*
-            }
-        }
-    };
+/// One row of the multibase registry (reserved prefixes excluded).
+pub struct Entry {
+    pub name: &'static str,
+    pub character: char,
+    pub status: &'static str,
+    /// The UPPERCASE constant name, e.g. "BASE58BTC".
+    pub constant: &'static str,
 }
 
-define_bases! {
-    "identity" => Identity,
-    "base2" => Base2,
-    "base8" => Base8,
-    "base10" => Base10,
-    "base16" => Base16Lower,
-    "base16upper" => Base16Upper,
-    "base32" => Base32Lower,
-    "base32upper" => Base32Upper,
-    "base32pad" => Base32PadLower,
-    "base32padupper" => Base32PadUpper,
-    "base32hex" => Base32HexLower,
-    "base32hexupper" => Base32HexUpper,
-    "base32hexpad" => Base32HexPadLower,
-    "base32hexpadupper" => Base32HexPadUpper,
-    "base32z" => Base32Z,
-    "base36" => Base36Lower,
-    "base36upper" => Base36Upper,
-    "base58flickr" => Base58Flickr,
-    "base58btc" => Base58Btc,
-    "base64" => Base64,
-    "base64pad" => Base64Pad,
-    "base64url" => Base64Url,
-    "base64urlpad" => Base64UrlPad,
-    "base256emoji" => Base256Emoji,
+include!(concat!(env!("OUT_DIR"), "/multibase_gen.rs"));
+
+fn entry_for_name(name: &str) -> Option<&'static Entry> {
+    NAME_TO_INDEX.get(name).map(|&index| &ENTRIES[index])
+}
+
+fn entry_for_char(character: char) -> Option<&'static Entry> {
+    CHAR_TO_INDEX
+        .get(&(character as u32))
+        .map(|&index| &ENTRIES[index])
+}
+
+/// Translate a registry entry into the rust-multibase native constant.
+/// None when the crate does not implement the encoding (e.g. proquint).
+fn native_base(entry: &Entry) -> Option<Base> {
+    Base::from_code(entry.character).ok()
 }
 
 pub fn base_from_name(name: &str) -> PyResult<Base> {
-    BASES
-        .get(name)
-        .copied()
-        .ok_or_else(|| MultiformatsError::new_err(format!("unknown multibase encoding: {name:?}")))
+    let entry = entry_for_name(name).ok_or_else(|| {
+        MultiformatsError::new_err(format!("unknown multibase encoding: {name:?}"))
+    })?;
+    native_base(entry).ok_or_else(|| {
+        MultiformatsError::new_err(format!("multibase encoding {name:?} is not supported"))
+    })
 }
 
 /// Encode bytes with the given multibase encoding, returning the prefixed string.
@@ -68,13 +53,34 @@ fn encode(base: &str, data: &[u8]) -> PyResult<String> {
 fn decode(string: &str) -> PyResult<(&'static str, Vec<u8>)> {
     let (base, data) = multibase::decode(string)
         .map_err(|e| MultiformatsError::new_err(format!("invalid multibase string: {e}")))?;
-    Ok((base_name(base), data))
+    let entry = entry_for_char(base.code()).ok_or_else(|| {
+        MultiformatsError::new_err(format!(
+            "multibase prefix {:?} is reserved, not an encoding",
+            base.code()
+        ))
+    })?;
+    Ok((entry.name, data))
+}
+
+/// All registry encodings as (name, prefix_character, status) tuples, in
+/// table order — including ones the underlying implementation cannot
+/// encode (compare with bases()).
+#[pyfunction]
+fn entries() -> Vec<(&'static str, char, &'static str)> {
+    ENTRIES
+        .iter()
+        .map(|entry| (entry.name, entry.character, entry.status))
+        .collect()
 }
 
 /// Names of all supported multibase encodings, sorted alphabetically.
 #[pyfunction]
 fn bases() -> Vec<&'static str> {
-    let mut names: Vec<_> = BASES.keys().copied().collect();
+    let mut names: Vec<_> = ENTRIES
+        .iter()
+        .filter(|entry| native_base(entry).is_some())
+        .map(|entry| entry.name)
+        .collect();
     names.sort_unstable();
     names
 }
@@ -83,13 +89,14 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(encode, m)?)?;
     m.add_function(wrap_pyfunction!(decode, m)?)?;
     m.add_function(wrap_pyfunction!(bases, m)?)?;
+    m.add_function(wrap_pyfunction!(entries, m)?)?;
 
-    // Every encoding as an UPPERCASE string constant holding its canonical
-    // name (e.g. BASE58BTC = "base58btc"), accepted anywhere a base name is
-    // (multibase has its own registry, separate from multicodec, so these
-    // are not integer codes).
-    for name in BASES.keys() {
-        m.add(name.to_uppercase().as_str(), *name)?;
+    // Every registry encoding as an UPPERCASE string constant holding its
+    // canonical name (e.g. BASE58BTC = "base58btc"), accepted anywhere a
+    // base name is. The multibase registry identifies encodings by prefix
+    // character, not integer code, so the constants are name strings.
+    for entry in ENTRIES {
+        m.add(entry.constant, entry.name)?;
     }
     Ok(())
 }
