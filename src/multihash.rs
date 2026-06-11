@@ -8,21 +8,12 @@ use crate::MultiformatsError;
 
 type Multihash64 = ::multihash::Multihash<64>;
 
-// Identity and SHA-1 are not part of the codetable's `Code` enum (identity
-// has no hasher, sha1 was dropped as insecure), and rust-multihash exposes
-// no constants for their multicodec codes, so these two are defined here.
-// Every other code comes from the `Code` variants via the generated
-// `From<Code> for u64` / `TryFrom<u64> for Code` impls; all names come from
-// the multicodec registry.
-const IDENTITY_CODE: u64 = 0x00;
-const SHA1_CODE: u64 = 0x11;
-
-/// The supported codetable algorithms. One listing expands into the list of
-/// supported `Code`s and the per-algorithm Python digest functions.
-macro_rules! define_table_algorithms {
+/// Per-algorithm Python digest functions for the codetable hashers. Only
+/// the function name <-> `Code` variant pairing is listed here, because it
+/// cannot be derived mechanically (e.g. `blake3` is `Code::Blake3_256`);
+/// codes and names come from the `Code` enum and the multicodec registry.
+macro_rules! define_digest_fns {
     ($($pyname:ident => $variant:ident,)*) => {
-        static SUPPORTED: &[Code] = &[$(Code::$variant,)*];
-
         fn register_table_digest_fns(m: &Bound<'_, PyModule>) -> PyResult<()> {
             $(
                 #[pyfunction]
@@ -36,7 +27,7 @@ macro_rules! define_table_algorithms {
     };
 }
 
-define_table_algorithms! {
+define_digest_fns! {
     sha2_256 => Sha2_256,
     sha2_512 => Sha2_512,
     sha3_224 => Sha3_224,
@@ -70,20 +61,30 @@ fn wrap(code: u64, digest: &[u8]) -> PyResult<Multihash64> {
         .map_err(|e| MultiformatsError::new_err(format!("invalid multihash: {e}")))
 }
 
-fn sha1_digest(data: &[u8]) -> PyResult<Multihash64> {
-    let mut hasher = multihash_codetable::Sha1::default();
-    hasher.update(data);
-    wrap(SHA1_CODE, hasher.finalize())
+fn digest_by_code(code: u64, data: &[u8]) -> PyResult<Multihash64> {
+    if let Ok(table_code) = Code::try_from(code) {
+        return Ok(table_code.digest(data));
+    }
+    // Identity and sha1 are not part of the codetable's `Code` enum (identity
+    // has no hasher, sha1 was dropped as insecure); dispatch them by their
+    // registry names.
+    match code_name(code) {
+        Some("identity") => wrap(code, data),
+        Some("sha1") => {
+            let mut hasher = multihash_codetable::Sha1::default();
+            hasher.update(data);
+            wrap(code, hasher.finalize())
+        }
+        _ => Err(MultiformatsError::new_err(format!(
+            "unknown hash algorithm code: {code:#x}"
+        ))),
+    }
 }
 
-fn digest_by_code(code: u64, data: &[u8]) -> PyResult<Multihash64> {
-    match code {
-        IDENTITY_CODE => wrap(IDENTITY_CODE, data),
-        SHA1_CODE => sha1_digest(data),
-        _ => Code::try_from(code).map(|c| c.digest(data)).map_err(|_| {
-            MultiformatsError::new_err(format!("unknown hash algorithm code: {code:#x}"))
-        }),
-    }
+/// Whether `code` can be digested: in the codetable, or one of the two
+/// manually dispatched algorithms.
+fn is_supported_code(code: u64) -> bool {
+    Code::try_from(code).is_ok() || matches!(code_name(code), Some("identity" | "sha1"))
 }
 
 fn digest_by_name(name: &str, data: &[u8]) -> PyResult<Multihash64> {
@@ -189,15 +190,15 @@ fn digest(algorithm: Algorithm<'_>, data: &[u8]) -> PyResult<PyMultihash> {
 /// sorted by code.
 #[pyfunction]
 fn codes(py: Python<'_>) -> PyResult<Bound<'_, PyDict>> {
-    let mut codes: Vec<u64> = SUPPORTED.iter().map(|&c| c.into()).collect();
-    codes.push(IDENTITY_CODE);
-    codes.push(SHA1_CODE);
-    codes.sort_unstable();
+    let mut supported: Vec<&multicodec::Entry> = multicodec::ENTRIES
+        .iter()
+        .filter(|entry| entry.tag == "multihash" && is_supported_code(entry.code))
+        .collect();
+    supported.sort_unstable_by_key(|entry| entry.code);
 
     let dict = PyDict::new(py);
-    for code in codes {
-        let name = code_name(code).expect("supported algorithms are in the registry");
-        dict.set_item(name, code)?;
+    for entry in supported {
+        dict.set_item(entry.name, entry.code)?;
     }
     Ok(dict)
 }
@@ -205,14 +206,14 @@ fn codes(py: Python<'_>) -> PyResult<Bound<'_, PyDict>> {
 #[pyfunction]
 fn identity(data: &[u8]) -> PyResult<PyMultihash> {
     Ok(PyMultihash {
-        inner: wrap(IDENTITY_CODE, data)?,
+        inner: digest_by_name("identity", data)?,
     })
 }
 
 #[pyfunction]
 fn sha1(data: &[u8]) -> PyResult<PyMultihash> {
     Ok(PyMultihash {
-        inner: sha1_digest(data)?,
+        inner: digest_by_name("sha1", data)?,
     })
 }
 
