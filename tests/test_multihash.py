@@ -115,6 +115,13 @@ def test_codes_table():
     assert len(codes) == 20
 
 
+def test_codes_agree_with_py_multicodec_table():
+    from multicodec.constants import NAME_TABLE
+
+    for name, code in multihash.codes().items():
+        assert NAME_TABLE[name] == code, name
+
+
 def test_equality_and_hashing():
     a = multihash.sha2_256(DATA)
     b = multihash.sha2_256(DATA)

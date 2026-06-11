@@ -38,8 +38,10 @@ multihash.codes()                                    # name -> code table
 # CID
 cid = CID.decode("QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n")
 cid.version                                          # 0
-cid.codec                                            # 112 (0x70, dag-pb)
+cid.codec                                            # 112 (0x70)
+cid.codec_name                                       # "dag-pb" (via py-multicodec)
 cid.hash.name                                        # "sha2-256"
+CID(1, "raw", cid.hash)                              # codec by multicodec name or code
 str(cid.to_v1())                                     # "bafybeihdwdce..."
 cid.to_v1().encode("base64url")                      # any multibase encoding
 CID.from_bytes(cid.to_bytes()) == cid                # True

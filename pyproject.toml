@@ -22,6 +22,7 @@ classifiers = [
     "Programming Language :: Rust",
     "Topic :: Software Development :: Libraries",
 ]
+dependencies = ["py-multicodec>=1.0"]
 
 [project.urls]
 Repository = "https://github.com/probe-lab/py-multiformats"
@@ -36,3 +37,8 @@ features = ["pyo3/extension-module"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[[tool.mypy.overrides]]
+# py-multicodec ships no py.typed marker or stubs
+module = "multicodec.*"
+ignore_missing_imports = true

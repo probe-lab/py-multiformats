@@ -9,6 +9,34 @@ fn cid_err(e: impl std::fmt::Display) -> PyErr {
     MultiformatsError::new_err(format!("invalid CID: {e}"))
 }
 
+/// Codec name <-> code mappings come from the py-multicodec package
+/// (a runtime dependency) rather than being redefined here.
+fn multicodec_table<'py>(py: Python<'py>, table: &str) -> PyResult<Bound<'py, PyAny>> {
+    let constants = py.import("multicodec.constants").map_err(|_| {
+        MultiformatsError::new_err(
+            "codec name lookups require the py-multicodec package (pip install py-multicodec)",
+        )
+    })?;
+    constants.getattr(table)
+}
+
+/// Accept a codec as either its integer code or its multicodec name.
+fn resolve_codec(codec: &Bound<'_, PyAny>) -> PyResult<u64> {
+    if let Ok(code) = codec.extract::<u64>() {
+        return Ok(code);
+    }
+    if let Ok(name) = codec.extract::<&str>() {
+        let table = multicodec_table(codec.py(), "NAME_TABLE")?;
+        return table
+            .get_item(name)
+            .map_err(|_| MultiformatsError::new_err(format!("unknown multicodec name: {name:?}")))?
+            .extract();
+    }
+    Err(MultiformatsError::new_err(
+        "codec must be an integer code or a multicodec name",
+    ))
+}
+
 /// A self-describing content identifier (version, codec, multihash).
 #[pyclass(
     name = "CID",
@@ -28,9 +56,9 @@ pub struct PyCid {
 #[pymethods]
 impl PyCid {
     #[new]
-    fn new(version: u64, codec: u64, hash: &PyMultihash) -> PyResult<Self> {
+    fn new(version: u64, codec: &Bound<'_, PyAny>, hash: &PyMultihash) -> PyResult<Self> {
         let version = Version::try_from(version).map_err(cid_err)?;
-        let inner = Cid::new(version, codec, hash.inner).map_err(cid_err)?;
+        let inner = Cid::new(version, resolve_codec(codec)?, hash.inner).map_err(cid_err)?;
         Ok(Self { inner })
     }
 
@@ -58,6 +86,17 @@ impl PyCid {
     #[getter]
     fn codec(&self) -> u64 {
         self.inner.codec()
+    }
+
+    /// The multicodec name of the content type per py-multicodec's table
+    /// (e.g. "dag-pb"), or None if the code is not registered.
+    #[getter]
+    fn codec_name(&self, py: Python<'_>) -> PyResult<Option<String>> {
+        let table = multicodec_table(py, "CODE_TABLE")?;
+        match table.get_item(self.inner.codec()) {
+            Ok(name) => name.extract().map(Some),
+            Err(_) => Ok(None),
+        }
     }
 
     /// The multihash of the content.

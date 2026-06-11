@@ -50,6 +50,36 @@ def test_constructs_v0_from_parts():
     assert str(cid).startswith("Qm")
 
 
+def test_constructs_with_codec_name():
+    mh = multihash.sha2_256(b"hello world")
+    assert CID(1, "raw", mh) == CID(1, RAW, mh)
+    assert CID(1, "dag-pb", mh) == CID(1, DAG_PB, mh)
+
+
+def test_codec_name_resolves_via_py_multicodec():
+    assert CID.decode(CID_V0).codec_name == "dag-pb"
+    mh = multihash.sha2_256(b"hello world")
+    assert CID(1, RAW, mh).codec_name == "raw"
+
+
+def test_codec_name_is_none_for_unregistered_code():
+    mh = multihash.sha2_256(b"hello world")
+    # 0x300001 is in the multicodec private use area, never registered
+    assert CID(1, 0x300001, mh).codec_name is None
+
+
+def test_rejects_unknown_codec_name():
+    mh = multihash.sha2_256(b"hello world")
+    with pytest.raises(MultiformatsError, match="unknown multicodec name"):
+        CID(1, "not-a-codec", mh)
+
+
+def test_rejects_codec_of_wrong_type():
+    mh = multihash.sha2_256(b"hello world")
+    with pytest.raises(MultiformatsError, match="codec must be"):
+        CID(1, 1.5, mh)
+
+
 def test_v0_rejects_non_dag_pb():
     mh = multihash.sha2_256(b"hello world")
     with pytest.raises(MultiformatsError, match="invalid CID"):

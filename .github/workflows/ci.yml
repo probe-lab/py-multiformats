@@ -36,6 +36,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: pip install maturin pytest mypy
       - run: maturin build --release --out dist
-      - run: pip install --no-index --find-links dist py-multiformats
+      - run: pip install dist/*.whl
+        shell: bash
       - run: pytest -v
       - run: mypy tests/
