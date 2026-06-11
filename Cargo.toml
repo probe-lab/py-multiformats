@@ -1,0 +1,31 @@
+[package]
+name = "py-multiformats"
+version = "0.1.0"
+edition = "2021"
+description = "Python bindings for the Rust multiformats implementations"
+license = "MIT OR Apache-2.0"
+
+[lib]
+name = "_multiformats"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.28", features = ["extension-module", "abi3-py310"] }
+multibase = "0.9"
+multihash = "0.19"
+multihash-derive = "0.9"
+multihash-codetable = { version = "0.2", features = [
+    "sha1",
+    "sha2",
+    "sha3",
+    "ripemd",
+    "blake2b",
+    "blake2s",
+    "blake3",
+] }
+cid = "0.11"
+multiaddr = "0.18"
+
+[profile.release]
+lto = true
+strip = true
