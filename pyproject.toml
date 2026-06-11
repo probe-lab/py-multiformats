@@ -26,8 +26,8 @@ classifiers = [
 [project.urls]
 Repository = "https://github.com/probe-lab/py-multiformats"
 
-[project.optional-dependencies]
-dev = ["pytest>=8", "mypy>=1.10"]
+[dependency-groups]
+dev = ["maturin>=1.7,<2.0", "pytest>=8", "mypy>=1.10"]
 
 [tool.maturin]
 python-source = "python"

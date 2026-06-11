@@ -111,14 +111,17 @@ takes a different approach:
 Requires a Rust toolchain and [uv](https://docs.astral.sh/uv/):
 
 ```bash
-uv venv                                       # create the virtual environment
-uv pip install maturin pytest mypy            # install the dev tools
-uv run maturin develop                        # build the Rust extension into the venv
+uv sync                                       # create the venv, install the dev tools, build the extension
 uv run pytest                                 # run the test suite
 uv run mypy tests/                            # type-check against the stubs
+uv run maturin develop                        # rebuild the extension after Rust changes
 cargo clippy --all-targets -- -D warnings     # lint the Rust side
 cargo test                                    # run the Rust unit tests
 ```
+
+The dev tools (maturin, pytest, mypy) are declared as a
+[dependency group](https://docs.astral.sh/uv/concepts/projects/dependencies/#dependency-groups)
+in `pyproject.toml`, so `uv sync` installs everything.
 
 ### Code generation
 
