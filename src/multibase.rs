@@ -4,71 +4,57 @@ use pyo3::prelude::*;
 
 use crate::MultiformatsError;
 
-/// Canonical multibase spec names mapped to the Rust `Base` enum. The crate
-/// itself only knows the one-character codes, not the spec names, so the
-/// mapping is defined here (compile-time perfect hash map, O(1) lookup).
-static BASES: phf::Map<&'static str, Base> = phf_map! {
-    "identity" => Base::Identity,
-    "base2" => Base::Base2,
-    "base8" => Base::Base8,
-    "base10" => Base::Base10,
-    "base16" => Base::Base16Lower,
-    "base16upper" => Base::Base16Upper,
-    "base32" => Base::Base32Lower,
-    "base32upper" => Base::Base32Upper,
-    "base32pad" => Base::Base32PadLower,
-    "base32padupper" => Base::Base32PadUpper,
-    "base32hex" => Base::Base32HexLower,
-    "base32hexupper" => Base::Base32HexUpper,
-    "base32hexpad" => Base::Base32HexPadLower,
-    "base32hexpadupper" => Base::Base32HexPadUpper,
-    "base32z" => Base::Base32Z,
-    "base36" => Base::Base36Lower,
-    "base36upper" => Base::Base36Upper,
-    "base58flickr" => Base::Base58Flickr,
-    "base58btc" => Base::Base58Btc,
-    "base64" => Base::Base64,
-    "base64pad" => Base::Base64Pad,
-    "base64url" => Base::Base64Url,
-    "base64urlpad" => Base::Base64UrlPad,
-    "base256emoji" => Base::Base256Emoji,
-};
+/// Canonical multibase spec names for the Rust `Base` enum, defined here
+/// because the crate itself only knows the one-character codes. One listing
+/// expands into both lookup directions at compile time: a perfect hash map
+/// for name -> Base and an exhaustive match (a jump table) for Base -> name.
+/// The match also breaks the build if the crate ever adds a variant.
+macro_rules! define_bases {
+    ($($name:literal => $variant:ident,)*) => {
+        static BASES: phf::Map<&'static str, Base> = phf_map! {
+            $($name => Base::$variant,)*
+        };
+
+        pub fn base_name(base: Base) -> &'static str {
+            match base {
+                $(Base::$variant => $name,)*
+            }
+        }
+    };
+}
+
+define_bases! {
+    "identity" => Identity,
+    "base2" => Base2,
+    "base8" => Base8,
+    "base10" => Base10,
+    "base16" => Base16Lower,
+    "base16upper" => Base16Upper,
+    "base32" => Base32Lower,
+    "base32upper" => Base32Upper,
+    "base32pad" => Base32PadLower,
+    "base32padupper" => Base32PadUpper,
+    "base32hex" => Base32HexLower,
+    "base32hexupper" => Base32HexUpper,
+    "base32hexpad" => Base32HexPadLower,
+    "base32hexpadupper" => Base32HexPadUpper,
+    "base32z" => Base32Z,
+    "base36" => Base36Lower,
+    "base36upper" => Base36Upper,
+    "base58flickr" => Base58Flickr,
+    "base58btc" => Base58Btc,
+    "base64" => Base64,
+    "base64pad" => Base64Pad,
+    "base64url" => Base64Url,
+    "base64urlpad" => Base64UrlPad,
+    "base256emoji" => Base256Emoji,
+}
 
 pub fn base_from_name(name: &str) -> PyResult<Base> {
     BASES
         .get(name)
         .copied()
         .ok_or_else(|| MultiformatsError::new_err(format!("unknown multibase encoding: {name:?}")))
-}
-
-/// The exhaustive match breaks the build if the crate ever adds a variant.
-pub fn base_name(base: Base) -> &'static str {
-    match base {
-        Base::Identity => "identity",
-        Base::Base2 => "base2",
-        Base::Base8 => "base8",
-        Base::Base10 => "base10",
-        Base::Base16Lower => "base16",
-        Base::Base16Upper => "base16upper",
-        Base::Base32Lower => "base32",
-        Base::Base32Upper => "base32upper",
-        Base::Base32PadLower => "base32pad",
-        Base::Base32PadUpper => "base32padupper",
-        Base::Base32HexLower => "base32hex",
-        Base::Base32HexUpper => "base32hexupper",
-        Base::Base32HexPadLower => "base32hexpad",
-        Base::Base32HexPadUpper => "base32hexpadupper",
-        Base::Base32Z => "base32z",
-        Base::Base36Lower => "base36",
-        Base::Base36Upper => "base36upper",
-        Base::Base58Flickr => "base58flickr",
-        Base::Base58Btc => "base58btc",
-        Base::Base64 => "base64",
-        Base::Base64Pad => "base64pad",
-        Base::Base64Url => "base64url",
-        Base::Base64UrlPad => "base64urlpad",
-        Base::Base256Emoji => "base256emoji",
-    }
 }
 
 /// Encode bytes with the given multibase encoding, returning the prefixed string.
@@ -98,16 +84,4 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(decode, m)?)?;
     m.add_function(wrap_pyfunction!(bases, m)?)?;
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn bases_map_and_base_name_agree() {
-        for (name, base) in BASES.entries() {
-            assert_eq!(base_name(*base), *name);
-        }
-    }
 }
