@@ -51,7 +51,9 @@ def test_constants_hold_canonical_names():
 
 
 def test_encode_accepts_constants():
-    assert multibase.encode(multibase.BASE58BTC, SPEC_INPUT) == SPEC_VECTORS["base58btc"]
+    encoded = multibase.encode(multibase.BASE58BTC, SPEC_INPUT)
+    assert encoded == SPEC_VECTORS["base58btc"]
+    assert multibase.decode(encoded) == (multibase.BASE58BTC, SPEC_INPUT)
 
 
 def test_unknown_constant_raises():
@@ -83,7 +85,7 @@ def test_identity_prefix_is_reserved():
 
 
 def test_encodes_base256emoji_spec_vector():
-    assert multibase.encode("base256emoji", SPEC_INPUT) == EMOJI_SPEC_VECTOR
+    assert multibase.encode(multibase.BASE256EMOJI, SPEC_INPUT) == EMOJI_SPEC_VECTOR
 
 
 @pytest.mark.xfail(

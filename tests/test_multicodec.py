@@ -1,7 +1,6 @@
 import pytest
 
 from multiformats import MultiformatsError, multicodec
-from test_cid import DAG_PB
 
 
 def test_code_lookup():
@@ -11,7 +10,7 @@ def test_code_lookup():
 
 
 def test_code_accepts_constants():
-    assert multicodec.code(multicodec.DAG_PB) == DAG_PB
+    assert multicodec.code(multicodec.DAG_PB) == 0x70
     assert multicodec.code("dag-pb") == multicodec.DAG_PB
 
 
@@ -27,8 +26,8 @@ def test_code_rejects_wrong_type():
 
 def test_name_lookup():
     assert multicodec.name(0x70) == "dag-pb"
-    assert multicodec.name(0x55) == "raw"
-    assert multicodec.name(0x12) == "sha2-256"
+    assert multicodec.name(multicodec.RAW) == "raw"
+    assert multicodec.name(multicodec.SHA2_256) == "sha2-256"
 
 
 def test_lookups_are_inverse():
@@ -37,11 +36,12 @@ def test_lookups_are_inverse():
         assert multicodec.name(code) == name
 
 
-def test_tag_accepts_name_or_code():
+def test_tag_accepts_name_code_or_constant():
     assert multicodec.tag("dag-pb") == "ipld"
     assert multicodec.tag(0x70) == "ipld"
+    assert multicodec.tag(multicodec.DAG_PB) == "ipld"
     assert multicodec.tag("sha2-256") == "multihash"
-    assert multicodec.tag("tcp") == "multiaddr"
+    assert multicodec.tag(multicodec.TCP) == "multiaddr"
 
 
 def test_entries_shape():

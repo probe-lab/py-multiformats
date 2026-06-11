@@ -1,19 +1,16 @@
 import pytest
 
-from multiformats import CID, MultiformatsError, multihash
+from multiformats import CID, MultiformatsError, multicodec, multihash
 
 # The "hello world" example file on IPFS (dag-pb, sha2-256).
 CID_V0 = "QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n"
 CID_V1 = "bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"
 
-DAG_PB = 0x70
-RAW = 0x55
-
 
 def test_decodes_cid_v0():
     cid = CID.decode(CID_V0)
     assert cid.version == 0
-    assert cid.codec == DAG_PB
+    assert cid.codec == multicodec.DAG_PB
     assert cid.hash.name == "sha2-256"
     assert str(cid) == CID_V0
 
@@ -21,7 +18,7 @@ def test_decodes_cid_v0():
 def test_decodes_cid_v1():
     cid = CID.decode(CID_V1)
     assert cid.version == 1
-    assert cid.codec == DAG_PB
+    assert cid.codec == multicodec.DAG_PB
     assert str(cid) == CID_V1
 
 
@@ -36,30 +33,30 @@ def test_v0_to_v1_conversion():
 
 def test_constructs_v1_from_parts():
     mh = multihash.sha2_256(b"hello world")
-    cid = CID(1, RAW, mh)
+    cid = CID(1, multicodec.RAW, mh)
     assert cid.version == 1
-    assert cid.codec == RAW
+    assert cid.codec == multicodec.RAW
     assert cid.hash == mh
     assert CID.decode(str(cid)) == cid
 
 
 def test_constructs_v0_from_parts():
     mh = multihash.sha2_256(b"hello world")
-    cid = CID(0, DAG_PB, mh)
+    cid = CID(0, multicodec.DAG_PB, mh)
     assert cid.version == 0
     assert str(cid).startswith("Qm")
 
 
 def test_constructs_with_codec_name():
     mh = multihash.sha2_256(b"hello world")
-    assert CID(1, "raw", mh) == CID(1, RAW, mh)
-    assert CID(1, "dag-pb", mh) == CID(1, DAG_PB, mh)
+    assert CID(1, "raw", mh) == CID(1, multicodec.RAW, mh)
+    assert CID(1, "dag-pb", mh) == CID(1, multicodec.DAG_PB, mh)
 
 
 def test_codec_name_resolves_via_py_multicodec():
     assert CID.decode(CID_V0).codec_name == "dag-pb"
     mh = multihash.sha2_256(b"hello world")
-    assert CID(1, RAW, mh).codec_name == "raw"
+    assert CID(1, multicodec.RAW, mh).codec_name == "raw"
 
 
 def test_codec_name_is_none_for_unregistered_code():
@@ -83,13 +80,13 @@ def test_rejects_codec_of_wrong_type():
 def test_v0_rejects_non_dag_pb():
     mh = multihash.sha2_256(b"hello world")
     with pytest.raises(MultiformatsError, match="invalid CID"):
-        CID(0, RAW, mh)
+        CID(0, multicodec.RAW, mh)
 
 
 def test_rejects_unknown_version():
     mh = multihash.sha2_256(b"hello world")
     with pytest.raises(MultiformatsError, match="invalid CID"):
-        CID(7, RAW, mh)
+        CID(7, multicodec.RAW, mh)
 
 
 def test_bytes_round_trip():

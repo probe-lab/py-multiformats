@@ -29,8 +29,9 @@ def test_classes_are_importable_from_submodules():
 def test_formats_interoperate():
     """A CID's multihash, re-encoded through multibase, survives the round trip."""
     mh = multiformats.multihash.sha2_256(b"interop")
-    cid = CID(1, 0x55, mh)
-    encoded = multiformats.multibase.encode("base32", cid.to_bytes())
+    cid = CID(1, multiformats.multicodec.RAW, mh)
+    assert cid.__str__() == "bafkreid3qss2f5en43dcgtoknq53imyuxipbihkob42cmouap5kh3gsodm"
+    encoded = cid.encode(multiformats.multibase.BASE32)
     base, raw = multiformats.multibase.decode(encoded)
-    assert base == "base32"
+    assert base == multiformats.multibase.BASE32
     assert CID.from_bytes(raw) == cid

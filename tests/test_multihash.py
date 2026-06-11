@@ -2,23 +2,23 @@ import hashlib
 
 import pytest
 
-from multiformats import Multihash, MultiformatsError, multihash
+from multiformats import Multihash, MultiformatsError, multicodec, multihash
 
 DATA = b"hello world"
 
 # Algorithms that exist in hashlib, for cross-checking digests.
 HASHLIB_EQUIVALENTS = [
-    ("sha1", 0x11, lambda d: hashlib.sha1(d)),
-    ("sha2-256", 0x12, lambda d: hashlib.sha256(d)),
-    ("sha2-512", 0x13, lambda d: hashlib.sha512(d)),
-    ("sha3-224", 0x17, lambda d: hashlib.sha3_224(d)),
-    ("sha3-256", 0x16, lambda d: hashlib.sha3_256(d)),
-    ("sha3-384", 0x15, lambda d: hashlib.sha3_384(d)),
-    ("sha3-512", 0x14, lambda d: hashlib.sha3_512(d)),
-    ("blake2b-256", 0xB220, lambda d: hashlib.blake2b(d, digest_size=32)),
-    ("blake2b-512", 0xB240, lambda d: hashlib.blake2b(d, digest_size=64)),
-    ("blake2s-128", 0xB250, lambda d: hashlib.blake2s(d, digest_size=16)),
-    ("blake2s-256", 0xB260, lambda d: hashlib.blake2s(d, digest_size=32)),
+    ("sha1", multicodec.SHA1, lambda d: hashlib.sha1(d)),
+    ("sha2-256", multicodec.SHA2_256, lambda d: hashlib.sha256(d)),
+    ("sha2-512", multicodec.SHA2_512, lambda d: hashlib.sha512(d)),
+    ("sha3-224", multicodec.SHA3_224, lambda d: hashlib.sha3_224(d)),
+    ("sha3-256", multicodec.SHA3_256, lambda d: hashlib.sha3_256(d)),
+    ("sha3-384", multicodec.SHA3_384, lambda d: hashlib.sha3_384(d)),
+    ("sha3-512", multicodec.SHA3_512, lambda d: hashlib.sha3_512(d)),
+    ("blake2b-256", multicodec.BLAKE2B_256, lambda d: hashlib.blake2b(d, digest_size=32)),
+    ("blake2b-512", multicodec.BLAKE2B_512, lambda d: hashlib.blake2b(d, digest_size=64)),
+    ("blake2s-128", multicodec.BLAKE2S_128, lambda d: hashlib.blake2s(d, digest_size=16)),
+    ("blake2s-256", multicodec.BLAKE2S_256, lambda d: hashlib.blake2s(d, digest_size=32)),
 ]
 
 
@@ -68,14 +68,14 @@ def test_ripemd_160_known_vector():
 
 def test_identity_keeps_data():
     mh = multihash.digest("identity", DATA)
-    assert mh.code == 0x00
+    assert mh.code == multicodec.IDENTITY
     assert mh.digest == DATA
     assert mh.size == len(DATA)
 
 
 def test_digest_by_name_and_code_agree():
     by_name = multihash.digest("sha2-256", DATA)
-    by_code = multihash.digest(0x12, DATA)
+    by_code = multihash.digest(multicodec.SHA2_256, DATA)
     by_fn = multihash.sha2_256(DATA)
     assert by_name == by_code == by_fn
 
@@ -106,12 +106,12 @@ def test_from_bytes_rejects_truncated_input():
 
 def test_wrap_precomputed_digest():
     digest = hashlib.sha256(DATA).digest()
-    assert Multihash.wrap(0x12, digest) == multihash.sha2_256(DATA)
+    assert Multihash.wrap(multicodec.SHA2_256, digest) == multihash.sha2_256(DATA)
 
 
 def test_wrap_rejects_oversized_digest():
     with pytest.raises(MultiformatsError, match="invalid multihash"):
-        Multihash.wrap(0x00, b"x" * 65)  # the bindings allocate 64 bytes max
+        Multihash.wrap(multicodec.IDENTITY, b"x" * 65)  # the bindings allocate 64 bytes max
 
 
 def test_name_property():
@@ -127,8 +127,6 @@ def test_codes_table():
 
 
 def test_codes_agree_with_multicodec_registry():
-    from multiformats import multicodec
-
     for name, code in multihash.codes().items():
         assert multicodec.code(name) == code, name
         assert multicodec.tag(code) == "multihash", name
