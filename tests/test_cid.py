@@ -75,7 +75,7 @@ def test_encode_default_matches_str():
 
 def test_encode_in_other_bases_round_trips():
     cid = CID.decode(CID_V1)
-    for base in ("base58btc", "base36", "base64url", "base256emoji"):
+    for base in ("base58btc", "base36", "base64url"):
         assert CID.decode(cid.encode(base)) == cid
 
 

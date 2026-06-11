@@ -37,12 +37,6 @@ impl PyCid {
     /// Parse a CID from its string form (multibase-prefixed CIDv1 or base58btc CIDv0).
     #[staticmethod]
     fn decode(string: &str) -> PyResult<Self> {
-        // base256emoji strings must bypass the broken upstream decoder,
-        // see multibase::decode_any.
-        if string.starts_with('\u{1F680}') {
-            let (_, bytes) = crate::multibase::decode_any(string)?;
-            return Self::from_bytes(&bytes);
-        }
         let inner = Cid::try_from(string).map_err(cid_err)?;
         Ok(Self { inner })
     }

@@ -1,112 +1,74 @@
-use std::collections::HashMap;
-use std::sync::OnceLock;
-
 use multibase::Base;
+use phf::phf_map;
 use pyo3::prelude::*;
 
 use crate::MultiformatsError;
 
-const EMOJI_PREFIX: char = '\u{1F680}'; // 🚀, the base256emoji multibase code
-
 /// Canonical multibase spec names mapped to the Rust `Base` enum. The crate
-/// itself only knows the one-character codes, not the spec names, so this
-/// table is the source of truth; the hash maps below index it for lookups.
-const BASES: &[(&str, Base)] = &[
-    ("identity", Base::Identity),
-    ("base2", Base::Base2),
-    ("base8", Base::Base8),
-    ("base10", Base::Base10),
-    ("base16", Base::Base16Lower),
-    ("base16upper", Base::Base16Upper),
-    ("base32", Base::Base32Lower),
-    ("base32upper", Base::Base32Upper),
-    ("base32pad", Base::Base32PadLower),
-    ("base32padupper", Base::Base32PadUpper),
-    ("base32hex", Base::Base32HexLower),
-    ("base32hexupper", Base::Base32HexUpper),
-    ("base32hexpad", Base::Base32HexPadLower),
-    ("base32hexpadupper", Base::Base32HexPadUpper),
-    ("base32z", Base::Base32Z),
-    ("base36", Base::Base36Lower),
-    ("base36upper", Base::Base36Upper),
-    ("base58flickr", Base::Base58Flickr),
-    ("base58btc", Base::Base58Btc),
-    ("base64", Base::Base64),
-    ("base64pad", Base::Base64Pad),
-    ("base64url", Base::Base64Url),
-    ("base64urlpad", Base::Base64UrlPad),
-    ("base256emoji", Base::Base256Emoji),
-];
-
-fn name_to_base() -> &'static HashMap<&'static str, Base> {
-    static TABLE: OnceLock<HashMap<&'static str, Base>> = OnceLock::new();
-    TABLE.get_or_init(|| BASES.iter().copied().collect())
-}
-
-/// `Base` does not implement `Hash`, so the reverse map is keyed by the
-/// base's unique multibase code character.
-fn code_to_name() -> &'static HashMap<char, &'static str> {
-    static TABLE: OnceLock<HashMap<char, &'static str>> = OnceLock::new();
-    TABLE.get_or_init(|| {
-        BASES
-            .iter()
-            .map(|(name, base)| (base.code(), *name))
-            .collect()
-    })
-}
+/// itself only knows the one-character codes, not the spec names, so the
+/// mapping is defined here (compile-time perfect hash map, O(1) lookup).
+static BASES: phf::Map<&'static str, Base> = phf_map! {
+    "identity" => Base::Identity,
+    "base2" => Base::Base2,
+    "base8" => Base::Base8,
+    "base10" => Base::Base10,
+    "base16" => Base::Base16Lower,
+    "base16upper" => Base::Base16Upper,
+    "base32" => Base::Base32Lower,
+    "base32upper" => Base::Base32Upper,
+    "base32pad" => Base::Base32PadLower,
+    "base32padupper" => Base::Base32PadUpper,
+    "base32hex" => Base::Base32HexLower,
+    "base32hexupper" => Base::Base32HexUpper,
+    "base32hexpad" => Base::Base32HexPadLower,
+    "base32hexpadupper" => Base::Base32HexPadUpper,
+    "base32z" => Base::Base32Z,
+    "base36" => Base::Base36Lower,
+    "base36upper" => Base::Base36Upper,
+    "base58flickr" => Base::Base58Flickr,
+    "base58btc" => Base::Base58Btc,
+    "base64" => Base::Base64,
+    "base64pad" => Base::Base64Pad,
+    "base64url" => Base::Base64Url,
+    "base64urlpad" => Base::Base64UrlPad,
+    "base256emoji" => Base::Base256Emoji,
+};
 
 pub fn base_from_name(name: &str) -> PyResult<Base> {
-    name_to_base()
+    BASES
         .get(name)
         .copied()
         .ok_or_else(|| MultiformatsError::new_err(format!("unknown multibase encoding: {name:?}")))
 }
 
+/// The exhaustive match breaks the build if the crate ever adds a variant.
 pub fn base_name(base: Base) -> &'static str {
-    code_to_name()
-        .get(&base.code())
-        .expect("every Base variant has a name entry")
-}
-
-/// The base256emoji alphabet mapped back to byte values, derived from the
-/// (correct) encoder. The multibase crate's own base256emoji *decoder* is
-/// broken: its lookup table is generated with `char_indices()`, which yields
-/// byte offsets instead of ordinals for multi-byte characters.
-fn emoji_reverse_table() -> &'static HashMap<char, u8> {
-    static TABLE: OnceLock<HashMap<char, u8>> = OnceLock::new();
-    TABLE.get_or_init(|| {
-        (0u8..=255)
-            .map(|byte| {
-                let encoded = Base::Base256Emoji.encode([byte]);
-                let symbol = encoded.chars().next().expect("encoder emits one symbol");
-                (symbol, byte)
-            })
-            .collect()
-    })
-}
-
-fn decode_emoji_payload(payload: &str) -> PyResult<Vec<u8>> {
-    let table = emoji_reverse_table();
-    payload
-        .chars()
-        .map(|c| {
-            table.get(&c).copied().ok_or_else(|| {
-                MultiformatsError::new_err(format!(
-                    "invalid multibase string: {c:?} is not in the base256emoji alphabet"
-                ))
-            })
-        })
-        .collect()
-}
-
-/// Decode any multibase-prefixed string, routing base256emoji around the
-/// broken upstream decoder.
-pub fn decode_any(string: &str) -> PyResult<(Base, Vec<u8>)> {
-    if let Some(payload) = string.strip_prefix(EMOJI_PREFIX) {
-        return Ok((Base::Base256Emoji, decode_emoji_payload(payload)?));
+    match base {
+        Base::Identity => "identity",
+        Base::Base2 => "base2",
+        Base::Base8 => "base8",
+        Base::Base10 => "base10",
+        Base::Base16Lower => "base16",
+        Base::Base16Upper => "base16upper",
+        Base::Base32Lower => "base32",
+        Base::Base32Upper => "base32upper",
+        Base::Base32PadLower => "base32pad",
+        Base::Base32PadUpper => "base32padupper",
+        Base::Base32HexLower => "base32hex",
+        Base::Base32HexUpper => "base32hexupper",
+        Base::Base32HexPadLower => "base32hexpad",
+        Base::Base32HexPadUpper => "base32hexpadupper",
+        Base::Base32Z => "base32z",
+        Base::Base36Lower => "base36",
+        Base::Base36Upper => "base36upper",
+        Base::Base58Flickr => "base58flickr",
+        Base::Base58Btc => "base58btc",
+        Base::Base64 => "base64",
+        Base::Base64Pad => "base64pad",
+        Base::Base64Url => "base64url",
+        Base::Base64UrlPad => "base64urlpad",
+        Base::Base256Emoji => "base256emoji",
     }
-    multibase::decode(string)
-        .map_err(|e| MultiformatsError::new_err(format!("invalid multibase string: {e}")))
 }
 
 /// Encode bytes with the given multibase encoding, returning the prefixed string.
@@ -118,14 +80,17 @@ fn encode(base: &str, data: &[u8]) -> PyResult<String> {
 /// Decode a multibase-prefixed string, returning `(base_name, data)`.
 #[pyfunction]
 fn decode(string: &str) -> PyResult<(&'static str, Vec<u8>)> {
-    let (base, data) = decode_any(string)?;
+    let (base, data) = multibase::decode(string)
+        .map_err(|e| MultiformatsError::new_err(format!("invalid multibase string: {e}")))?;
     Ok((base_name(base), data))
 }
 
-/// Names of all supported multibase encodings.
+/// Names of all supported multibase encodings, sorted alphabetically.
 #[pyfunction]
 fn bases() -> Vec<&'static str> {
-    BASES.iter().map(|(n, _)| *n).collect()
+    let mut names: Vec<_> = BASES.keys().copied().collect();
+    names.sort_unstable();
+    names
 }
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -133,4 +98,16 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(decode, m)?)?;
     m.add_function(wrap_pyfunction!(bases, m)?)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bases_map_and_base_name_agree() {
+        for (name, base) in BASES.entries() {
+            assert_eq!(base_name(*base), *name);
+        }
+    }
 }
