@@ -3,7 +3,7 @@
 [![CI](https://github.com/probe-lab/py-multiformats/actions/workflows/ci.yml/badge.svg)](https://github.com/probe-lab/py-multiformats/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/py-multiformats)](https://pypi.org/project/py-multiformats/)
 [![Python versions](https://img.shields.io/pypi/pyversions/py-multiformats)](https://pypi.org/project/py-multiformats/)
-[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](#license)
 [![Built with PyO3](https://img.shields.io/badge/built%20with-PyO3-f74c00?logo=rust)](https://pyo3.rs)
 
 Python bindings for the official Rust [multiformats](https://multiformats.io) implementations,
@@ -32,9 +32,9 @@ from multiformats import CID, Multiaddr, Multihash, multibase, multicodec, multi
 
 # multicodec — the codec registry
 multicodec.code("dag-pb")                            # 112 (0x70)
+multicodec.code(multicodec.DAG_PB)                   # 112 — every entry as a constant
 multicodec.name(0x70)                                # "dag-pb"
-multicodec.tag("dag-pb")                             # "ipld" (accepts name or code)
-multicodec.DAG_PB                                    # 112 — every entry as a constant
+multicodec.tag("dag-pb")                             # "ipld" (accepts name, code, or constant)
 multicodec.entries()                                 # [(name, tag, code, status), ...]
 
 # multibase
@@ -139,7 +139,9 @@ checked in). Each contains the registry rows as a static `ENTRIES` table,
 compile-time perfect hash maps for the lookups ([phf](https://docs.rs/phf)),
 and a `consts` module with one constant per entry. The same entries are
 registered as the Python constants (`multicodec.DAG_PB`,
-`multibase.BASE58BTC`, ...) at import time.
+`multibase.BASE58BTC`, ...) at import time. `build.rs` also generates the
+`multicodec.pyi` and `multibase.pyi` stubs (committed, checked for freshness
+in CI) so IDEs autocomplete every constant.
 
 To refresh the tables from upstream, run:
 

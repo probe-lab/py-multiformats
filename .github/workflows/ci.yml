@@ -37,6 +37,9 @@ jobs:
       - name: Running Rust tests
         run: cargo test
 
+      - name: Verifying the generated stubs are committed
+        run: git diff --exit-code python/multiformats/
+
   test:
     strategy:
       fail-fast: false

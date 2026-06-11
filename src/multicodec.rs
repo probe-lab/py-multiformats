@@ -45,10 +45,24 @@ pub fn coded_entry(code: u64) -> PyResult<&'static Entry> {
         .ok_or_else(|| MultiformatsError::new_err(format!("unknown multicodec code: {code:#x}")))
 }
 
-/// The code registered for a multicodec name.
+/// Resolve a name or an integer code (e.g. one of the module constants)
+/// to its registry entry.
+fn entry_for_any(codec: &Bound<'_, PyAny>) -> PyResult<&'static Entry> {
+    if let Ok(code) = codec.extract::<u64>() {
+        return coded_entry(code);
+    }
+    if let Ok(name) = codec.extract::<&str>() {
+        return named_entry(name);
+    }
+    Err(MultiformatsError::new_err(
+        "codec must be an integer code or a multicodec name",
+    ))
+}
+
+/// The registered code of a multicodec given by name or code.
 #[pyfunction]
-fn code(name: &str) -> PyResult<u64> {
-    Ok(named_entry(name)?.code)
+fn code(codec: &Bound<'_, PyAny>) -> PyResult<u64> {
+    Ok(entry_for_any(codec)?.code)
 }
 
 /// The name registered for a multicodec code.
@@ -60,15 +74,7 @@ fn name(code: u64) -> PyResult<&'static str> {
 /// The registry tag (e.g. "ipld", "multihash") of a name or code.
 #[pyfunction]
 fn tag(codec: &Bound<'_, PyAny>) -> PyResult<&'static str> {
-    if let Ok(code) = codec.extract::<u64>() {
-        return Ok(coded_entry(code)?.tag);
-    }
-    if let Ok(name) = codec.extract::<&str>() {
-        return Ok(named_entry(name)?.tag);
-    }
-    Err(MultiformatsError::new_err(
-        "codec must be an integer code or a multicodec name",
-    ))
+    Ok(entry_for_any(codec)?.tag)
 }
 
 /// All registry entries as (name, tag, code, status) tuples, in table order.

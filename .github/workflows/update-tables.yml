@@ -19,6 +19,12 @@ jobs:
       - name: Fetching the latest tables from the multiformats registries
         run: ./scripts/update-tables.sh
 
+      - name: Installing the Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Regenerating the Python stubs
+        run: cargo check
+
       - name: Opening a pull request if a table changed
         uses: peter-evans/create-pull-request@v7
         with:

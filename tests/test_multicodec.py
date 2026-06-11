@@ -1,12 +1,28 @@
 import pytest
 
 from multiformats import MultiformatsError, multicodec
+from test_cid import DAG_PB
 
 
 def test_code_lookup():
     assert multicodec.code("dag-pb") == 0x70
     assert multicodec.code("raw") == 0x55
     assert multicodec.code("sha2-256") == 0x12
+
+
+def test_code_accepts_constants():
+    assert multicodec.code(multicodec.DAG_PB) == DAG_PB
+    assert multicodec.code("dag-pb") == multicodec.DAG_PB
+
+
+def test_code_rejects_unknown_code():
+    with pytest.raises(MultiformatsError, match="unknown multicodec code"):
+        multicodec.code(0x300001)  # private use area, never registered
+
+
+def test_code_rejects_wrong_type():
+    with pytest.raises(MultiformatsError, match="codec must be"):
+        multicodec.code(1.5)
 
 
 def test_name_lookup():
