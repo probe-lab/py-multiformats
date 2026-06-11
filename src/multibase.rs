@@ -8,7 +8,9 @@ use crate::MultiformatsError;
 
 const EMOJI_PREFIX: char = '\u{1F680}'; // 🚀, the base256emoji multibase code
 
-/// Canonical multibase spec names mapped to the Rust `Base` enum.
+/// Canonical multibase spec names mapped to the Rust `Base` enum. The crate
+/// itself only knows the one-character codes, not the spec names, so this
+/// table is the source of truth; the hash maps below index it for lookups.
 const BASES: &[(&str, Base)] = &[
     ("identity", Base::Identity),
     ("base2", Base::Base2),
@@ -36,19 +38,33 @@ const BASES: &[(&str, Base)] = &[
     ("base256emoji", Base::Base256Emoji),
 ];
 
+fn name_to_base() -> &'static HashMap<&'static str, Base> {
+    static TABLE: OnceLock<HashMap<&'static str, Base>> = OnceLock::new();
+    TABLE.get_or_init(|| BASES.iter().copied().collect())
+}
+
+/// `Base` does not implement `Hash`, so the reverse map is keyed by the
+/// base's unique multibase code character.
+fn code_to_name() -> &'static HashMap<char, &'static str> {
+    static TABLE: OnceLock<HashMap<char, &'static str>> = OnceLock::new();
+    TABLE.get_or_init(|| {
+        BASES
+            .iter()
+            .map(|(name, base)| (base.code(), *name))
+            .collect()
+    })
+}
+
 pub fn base_from_name(name: &str) -> PyResult<Base> {
-    BASES
-        .iter()
-        .find(|(n, _)| *n == name)
-        .map(|(_, b)| *b)
+    name_to_base()
+        .get(name)
+        .copied()
         .ok_or_else(|| MultiformatsError::new_err(format!("unknown multibase encoding: {name:?}")))
 }
 
 pub fn base_name(base: Base) -> &'static str {
-    BASES
-        .iter()
-        .find(|(_, b)| *b == base)
-        .map(|(n, _)| *n)
+    code_to_name()
+        .get(&base.code())
         .expect("every Base variant has a name entry")
 }
 
