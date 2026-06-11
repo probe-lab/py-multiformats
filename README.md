@@ -32,6 +32,7 @@ multicodec.entries()                                 # [(name, tag, code, status
 
 # multibase
 encoded = multibase.encode("base58btc", b"hello")    # "zCn8eVZg"
+encoded = multibase.encode(multibase.BASE58BTC, b"hello")  # same, via constant
 base, data = multibase.decode(encoded)               # ("base58btc", b"hello")
 multibase.bases()                                    # all supported encodings
 

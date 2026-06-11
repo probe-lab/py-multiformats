@@ -83,5 +83,13 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(encode, m)?)?;
     m.add_function(wrap_pyfunction!(decode, m)?)?;
     m.add_function(wrap_pyfunction!(bases, m)?)?;
+
+    // Every encoding as an UPPERCASE string constant holding its canonical
+    // name (e.g. BASE58BTC = "base58btc"), accepted anywhere a base name is
+    // (multibase has its own registry, separate from multicodec, so these
+    // are not integer codes).
+    for name in BASES.keys() {
+        m.add(name.to_uppercase().as_str(), *name)?;
+    }
     Ok(())
 }

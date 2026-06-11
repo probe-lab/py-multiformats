@@ -42,6 +42,24 @@ def test_decodes_spec_vector(base, encoded):
     assert multibase.decode(encoded) == (base, SPEC_INPUT)
 
 
+def test_constants_hold_canonical_names():
+    assert multibase.BASE58BTC == "base58btc"
+    assert multibase.BASE32 == "base32"
+    assert multibase.IDENTITY == "identity"
+    assert {getattr(multibase, name.upper()) for name in multibase.bases()} == set(
+        multibase.bases()
+    )
+
+
+def test_encode_accepts_constants():
+    assert multibase.encode(multibase.BASE58BTC, SPEC_INPUT) == SPEC_VECTORS["base58btc"]
+
+
+def test_unknown_constant_raises():
+    with pytest.raises(AttributeError):
+        multibase.BASE59
+
+
 def test_round_trips_identity():
     encoded = multibase.encode("identity", SPEC_INPUT)
     assert multibase.decode(encoded) == ("identity", SPEC_INPUT)
