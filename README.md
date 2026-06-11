@@ -1,5 +1,11 @@
 # py-multiformats
 
+[![CI](https://github.com/probe-lab/py-multiformats/actions/workflows/ci.yml/badge.svg)](https://github.com/probe-lab/py-multiformats/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/py-multiformats)](https://pypi.org/project/py-multiformats/)
+[![Python versions](https://img.shields.io/pypi/pyversions/py-multiformats)](https://pypi.org/project/py-multiformats/)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
+[![Built with PyO3](https://img.shields.io/badge/built%20with-PyO3-f74c00?logo=rust)](https://pyo3.rs)
+
 Python bindings for the official Rust [multiformats](https://multiformats.io) implementations,
 wrapped with [PyO3](https://pyo3.rs):
 
@@ -69,6 +75,36 @@ Multiaddr.from_bytes(addr.to_bytes()) == addr        # True
 ```
 
 All parse/decode failures raise `multiformats.MultiformatsError`, a subclass of `ValueError`.
+
+## Why this package?
+
+There are existing Python implementations — the legacy single-format packages
+([py-multibase](https://github.com/multiformats/py-multibase),
+[py-multihash](https://github.com/multiformats/py-multihash),
+[py-multiaddr](https://github.com/multiformats/py-multiaddr),
+[py-cid](https://github.com/ipld/py-cid)) and the pure-Python
+[multiformats](https://github.com/hashberg-io/multiformats) package. This one
+takes a different approach:
+
+- **One package, one API.** All four formats plus the multicodec/multibase
+  registries live behind a single import with a consistent, typed API and a
+  shared exception type. The legacy packages are split across four
+  repositories with diverging conventions, and most have been dormant for
+  years.
+- **The reference implementations do the work.** Parsing, validation, and
+  hashing are the official Rust crates maintained by the multiformats
+  organization — the same code battle-tested inside rust-libp2p and the IPFS
+  ecosystem. Spec conformance fixes land upstream and arrive here by bumping
+  a dependency, instead of being re-implemented by hand.
+- **Native speed.** Hashing and parsing run as compiled Rust. Pure-Python
+  multihash/CID handling is orders of magnitude slower, which matters when
+  processing CIDs or multiaddrs in bulk.
+- **Registry-faithful by construction.** The multicodec and multibase tables
+  are generated from the canonical registry CSVs and refreshed automatically,
+  rather than copied into source once and left to rot.
+- **Zero-friction install.** abi3 wheels for Linux/macOS/Windows work on any
+  CPython ≥ 3.10 — no Rust toolchain, no compilation, no runtime
+  dependencies.
 
 ## Development
 
