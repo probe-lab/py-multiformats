@@ -1,6 +1,7 @@
 import pytest
 
-from multiformats import CID, MultiformatsError, multicodec, multihash
+from multiformats import MultiformatsError, multicodec, multihash
+from multiformats.cid import CID
 
 # The "hello world" example file on IPFS (dag-pb, sha2-256).
 CID_V0 = "QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n"

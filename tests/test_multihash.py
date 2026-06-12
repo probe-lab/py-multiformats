@@ -2,7 +2,8 @@ import hashlib
 
 import pytest
 
-from multiformats import Multihash, MultiformatsError, multicodec, multihash
+from multiformats import MultiformatsError, multicodec, multihash
+from multiformats.multihash import Multihash
 
 DATA = b"hello world"
 

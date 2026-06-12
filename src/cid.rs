@@ -25,7 +25,7 @@ fn resolve_codec(codec: &Bound<'_, PyAny>) -> PyResult<u64> {
 /// A self-describing content identifier (version, codec, multihash).
 #[pyclass(
     name = "CID",
-    module = "multiformats",
+    module = "multiformats.cid",
     frozen,
     eq,
     hash,

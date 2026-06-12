@@ -2,18 +2,15 @@
 
 Wraps rust-multibase, rust-multihash, rust-multiaddr, and rust-cid in a
 single package: https://multiformats.io
+
+The classes live in their format submodules: `multiformats.cid.CID`,
+`multiformats.multihash.Multihash`, `multiformats.multiaddr.Multiaddr`.
 """
 
 from . import cid, multiaddr, multibase, multicodec, multihash
 from ._multiformats import MultiformatsError
-from .cid import CID
-from .multiaddr import Multiaddr
-from .multihash import Multihash
 
 __all__ = [
-    "CID",
-    "Multiaddr",
-    "Multihash",
     "MultiformatsError",
     "cid",
     "multiaddr",

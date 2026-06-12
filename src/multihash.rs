@@ -99,7 +99,7 @@ fn digest_by_name(name: &str, data: &[u8]) -> PyResult<Multihash64> {
 /// A multihash: a self-describing hash (algorithm code, digest size, digest).
 #[pyclass(
     name = "Multihash",
-    module = "multiformats",
+    module = "multiformats.multihash",
     frozen,
     eq,
     hash,

@@ -1,6 +1,7 @@
 import pytest
 
-from multiformats import Multiaddr, MultiformatsError
+from multiformats import MultiformatsError
+from multiformats.multiaddr import Multiaddr
 
 ADDR = "/ip4/127.0.0.1/tcp/4001"
 PEER = "/p2p/QmcgpsyWgH8Y8ajJz1Cu72KnS5uo2Aa2LpzU7kinSupNKC"

@@ -37,8 +37,8 @@ The existing Python options are four single-format packages
 [py-cid](https://github.com/ipld/py-cid)) that have mostly gone quiet, and the
 pure-Python [multiformats](https://github.com/hashberg-io/multiformats)
 package. This one puts all four formats behind a single typed API and lets the
-Rust reference implementations do the actual work — the same code that runs
-inside rust-libp2p. Spec fixes arrive by bumping a dependency, parsing and
+Rust reference implementations do the actual work (the same code that runs
+inside rust-libp2p). Spec fixes arrive by bumping a dependency, parsing and
 hashing run at native speed, and the codec tables are generated from the
 canonical registries instead of being copied in once and left to rot. Ships as
 prebuilt abi3 wheels for CPython ≥ 3.10, no runtime dependencies.
@@ -52,7 +52,10 @@ pip install py-multiformats
 ## Usage
 
 ```python
-from multiformats import CID, Multiaddr, Multihash, multibase, multicodec, multihash
+from multiformats import multibase, multicodec, multihash
+from multiformats.cid import CID
+from multiformats.multiaddr import Multiaddr
+from multiformats.multihash import Multihash
 
 # multicodec — the codec registry. Every entry is a module constant.
 multicodec.DAG_PB                                    # 112 (0x70)

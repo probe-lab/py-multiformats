@@ -41,7 +41,7 @@ fn component_parts(component: &::multiaddr::Protocol<'_>) -> (String, Option<Str
 /// A self-describing network address.
 #[pyclass(
     name = "Multiaddr",
-    module = "multiformats",
+    module = "multiformats.multiaddr",
     frozen,
     eq,
     hash,
