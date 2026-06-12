@@ -149,4 +149,4 @@ runs the same script weekly and opens a pull request when a registry changed.
 
 ## License
 
-MIT OR Apache-2.0
+[Apache-2.0](LICENSE)
