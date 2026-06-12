@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "py-multiformats"
-version = "0.1.0"
+version = "0.1.0a1"
 description = "Python bindings for the Rust multiformats implementations (multibase, multihash, multiaddr, CID)"
 readme = "README.md"
 requires-python = ">=3.10"

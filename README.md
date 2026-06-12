@@ -147,6 +147,31 @@ To pull the latest tables from upstream:
 A scheduled workflow ([update-tables.yml](.github/workflows/update-tables.yml))
 runs the same script weekly and opens a pull request when a registry changed.
 
+### Releasing
+
+Releases are tag-driven; nothing is built or uploaded from a laptop.
+
+1. Bump `version` in `pyproject.toml` (PEP 440, e.g. `0.1.0a1` for an alpha,
+   `0.1.0` for a final release) and mirror it in `Cargo.toml`
+   (`0.1.0-alpha.1` in semver). Commit and push.
+2. Tag the commit and push the tag:
+
+   ```bash
+   git tag v0.1.0a1
+   git push origin v0.1.0a1
+   ```
+
+3. The [release workflow](.github/workflows/release.yml) triggers on `v*`
+   tags: it builds abi3 wheels for Linux (manylinux + musllinux,
+   x86_64/aarch64), macOS (x86_64/arm64), and Windows (x64), builds the
+   sdist, and publishes everything to PyPI.
+
+Publishing uses [trusted publishing](https://docs.pypi.org/trusted-publishers/)
+(OIDC) — there are no PyPI tokens anywhere. One-time setup, already done for
+this repository: a (pending) publisher on PyPI pointing at
+`probe-lab/py-multiformats`, workflow `release.yml`, environment `pypi`, and
+a matching `pypi` environment in the GitHub repository settings.
+
 ## License
 
 [Apache-2.0](LICENSE)
