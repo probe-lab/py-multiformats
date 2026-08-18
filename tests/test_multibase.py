@@ -24,6 +24,7 @@ SPEC_VECTORS = {
     "base32z": "hxf1zgedpcfzg1ebb",
     "base36": "k2lcpzo5yikidynfl",
     "base36upper": "K2LCPZO5YIKIDYNFL",
+    "base45": "RRFF.OEB$D5/DZ24",
     "base58flickr": "Z7Pznk19XTTzBtx",
     "base58btc": "z7paNL19xttacUY",
     "base64": "meWVzIG1hbmkgIQ",
@@ -104,6 +105,7 @@ def test_multibase_prefix_description_status():
 def test_multibase_member_encode():
     assert Multibase.BASE58BTC.encode(SPEC_INPUT) == SPEC_VECTORS["base58btc"]
     assert Multibase.BASE58BTC.encode(SPEC_INPUT) == multibase.encode("base58btc", SPEC_INPUT)
+    assert Multibase.BASE45.encode(SPEC_INPUT) == SPEC_VECTORS["base45"]
     with pytest.raises(MultiformatsError, match="not supported"):
         Multibase.PROQUINT.encode(SPEC_INPUT)
 
@@ -140,8 +142,8 @@ def test_bases_lists_all_supported_encodings():
     assert set(SPEC_VECTORS) < set(names)
     assert "base256emoji" in names
     # all registry encodings rust-multibase implements; "identity" (U+0000)
-    # is a reserved prefix in the registry, base45/proquint are unsupported
-    assert len(names) == 23
+    # is a reserved prefix in the registry, proquint is unsupported
+    assert len(names) == 24
 
 
 def test_encode_rejects_unknown_base():

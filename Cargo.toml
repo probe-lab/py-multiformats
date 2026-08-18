@@ -13,7 +13,7 @@ crate-type = ["cdylib"]
 # maturin enables pyo3/extension-module for wheel builds (see pyproject.toml);
 # keeping it out of the default features lets `cargo test` link libpython.
 pyo3 = { version = "0.28", features = ["abi3-py310"] }
-multibase = "0.9"
+multibase = "0.9.3"  # 0.9.3 adds base45 support
 phf = { version = "0.13", features = ["macros"] }
 multihash = "0.19"
 multihash-derive = "0.9"
