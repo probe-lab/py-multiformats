@@ -101,6 +101,13 @@ def test_multibase_prefix_description_status():
     assert Multibase.PROQUINT.status == "experimental"
 
 
+def test_multibase_member_encode():
+    assert Multibase.BASE58BTC.encode(SPEC_INPUT) == SPEC_VECTORS["base58btc"]
+    assert Multibase.BASE58BTC.encode(SPEC_INPUT) == multibase.encode("base58btc", SPEC_INPUT)
+    with pytest.raises(MultiformatsError, match="not supported"):
+        Multibase.PROQUINT.encode(SPEC_INPUT)
+
+
 def test_registered_but_unsupported_encoding_raises():
     assert multibase.PROQUINT == "proquint"
     with pytest.raises(MultiformatsError, match="not supported"):

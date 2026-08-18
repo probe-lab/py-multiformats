@@ -17,6 +17,8 @@ class Multibase(str, Enum):
     description: str
     status: str
 
+    def encode(self, data: bytes) -> str: ...
+
     BASE2 = "base2"
     BASE8 = "base8"
     BASE10 = "base10"

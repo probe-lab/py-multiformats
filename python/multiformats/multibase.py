@@ -3,8 +3,9 @@
 Every encoding is a member of the ``Multibase`` enum (e.g.
 ``Multibase.BASE58BTC``), also reachable as an UPPERCASE module attribute.
 Members behave as their canonical name string (``Multibase.BASE58BTC ==
-"base58btc"``), so they're usable wherever a base name is expected, and
-carry the registry's prefix, description, and status alongside it.
+"base58btc"``), so they're usable wherever a base name is expected, carry
+the registry's prefix, description, and status alongside it, and can encode
+directly (``Multibase.BASE58BTC.encode(b"hello")``).
 """
 
 from enum import Enum
@@ -29,6 +30,10 @@ class _MultibaseValue(str):
         obj.description = description
         obj.status = status
         return obj
+
+    def encode(self, data: bytes) -> str:
+        """Encode `data` with this multibase encoding, returning the prefixed string."""
+        return _multibase.encode(self, data)
 
 
 Multibase = Enum(

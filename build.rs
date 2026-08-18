@@ -252,7 +252,8 @@ fn generate_multibase() {
          and carries the registry's prefix, description, and status.\n    \"\"\"\n\n    \
          prefix: str\n    \
          description: str\n    \
-         status: str\n\n",
+         status: str\n\n    \
+         def encode(self, data: bytes) -> str: ...\n\n",
     );
     for row in &rows {
         writeln!(stub, "    {} = {:?}", constant_name(&row.name), row.name).unwrap();
