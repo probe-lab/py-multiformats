@@ -1,6 +1,9 @@
+from enum import Enum
+
 import pytest
 
 from multiformats import MultiformatsError, multibase
+from multiformats.multibase import Multibase
 
 # Test vectors from the multibase spec (https://github.com/multiformats/multibase),
 # input "yes mani !".
@@ -63,11 +66,39 @@ def test_unknown_constant_raises():
 
 def test_registry_entries():
     entries = multibase.entries()
-    assert ("base58btc", "z", "final") in entries
-    assert ("base256emoji", "\U0001F680", "experimental") in entries
+    assert ("base58btc", "z", "Base58 Bitcoin", "final") in entries
+    assert (
+        "base256emoji",
+        "\U0001F680",
+        "base256 with custom alphabet using variable-sized-codepoints",
+        "experimental",
+    ) in entries
     # registered encodings the underlying implementation cannot encode
-    assert any(name == "proquint" for name, _, _ in entries)
+    assert any(name == "proquint" for name, _, _, _ in entries)
     assert "proquint" not in multibase.bases()
+
+
+def test_multibase_is_a_proper_enum():
+    assert issubclass(Multibase, Enum)
+    assert issubclass(Multibase, str)
+    assert multibase.BASE58BTC is Multibase.BASE58BTC
+    assert len(list(Multibase)) == len(multibase.entries())
+
+
+def test_multibase_member_is_usable_as_its_name():
+    assert Multibase.BASE58BTC == "base58btc"
+    assert Multibase("base58btc") is Multibase.BASE58BTC
+    encoded = multibase.encode(Multibase.BASE58BTC, SPEC_INPUT)
+    assert encoded == SPEC_VECTORS["base58btc"]
+
+
+def test_multibase_prefix_description_status():
+    assert Multibase.BASE58BTC.prefix == "z"
+    assert Multibase.BASE58BTC.description == "Base58 Bitcoin"
+    assert Multibase.BASE58BTC.status == "final"
+
+    assert Multibase.BASE256EMOJI.prefix == "\U0001F680"
+    assert Multibase.PROQUINT.status == "experimental"
 
 
 def test_registered_but_unsupported_encoding_raises():

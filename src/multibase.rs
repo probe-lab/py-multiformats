@@ -10,6 +10,7 @@ use crate::MultiformatsError;
 pub struct Entry {
     pub name: &'static str,
     pub character: char,
+    pub description: &'static str,
     pub status: &'static str,
     /// The UPPERCASE constant name, e.g. "BASE58BTC".
     pub constant: &'static str,
@@ -62,14 +63,14 @@ fn decode(string: &str) -> PyResult<(&'static str, Vec<u8>)> {
     Ok((entry.name, data))
 }
 
-/// All registry encodings as (name, prefix_character, status) tuples, in
-/// table order — including ones the underlying implementation cannot
-/// encode (compare with bases()).
+/// All registry encodings as (name, prefix_character, description, status)
+/// tuples, in table order — including ones the underlying implementation
+/// cannot encode (compare with bases()).
 #[pyfunction]
-fn entries() -> Vec<(&'static str, char, &'static str)> {
+fn entries() -> Vec<(&'static str, char, &'static str, &'static str)> {
     ENTRIES
         .iter()
-        .map(|entry| (entry.name, entry.character, entry.status))
+        .map(|entry| (entry.name, entry.character, entry.description, entry.status))
         .collect()
 }
 
